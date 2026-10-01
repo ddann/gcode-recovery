@@ -45,6 +45,11 @@ internal static class HelpContent
         which the app can add when the config is writable) or, if you agree, homes Z at the bed corner X10 Y10, but only
         when that corner is at least 8 mm clear of the part.
 
+        UPDATES AND ANONYMOUS STATISTICS
+        The app checks for new versions at start. If you agreed, it also reports anonymously that it is open (a random number
+        that is forgotten when the app closes) and, when a recovery has finished, how many grams of filament it saved.
+        G-code, file names and printer details are never sent. Change this any time in Settings.
+
         SAFETY
         Bambu firmware G-code is undocumented; the Bambu profile is experimental. Watch the first run and keep a hand near the
         power switch. Review the G-code templates for your machine before printing. You use this software at your own risk.

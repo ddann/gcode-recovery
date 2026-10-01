@@ -65,6 +65,7 @@ public partial class MainWindow : Window
         Closing += async (_, _) =>
         {
             _streamCts?.Cancel();
+            _community?.Dispose();
             await ShutdownPrinterAsync();
         };
         Log("Ready. Open the G-code file that was printed, enter the measured height and press Analyze.");
@@ -74,12 +75,18 @@ public partial class MainWindow : Window
             if (e.Key == Key.F11) WindowState = WindowState == WindowState.FullScreen ? WindowState.Maximized : WindowState.FullScreen;
             else if (e.Key == Key.Escape && WindowState == WindowState.FullScreen) WindowState = WindowState.Maximized;
         };
-        Opened += async (_, _) => await HandleCommandLineAsync(Environment.GetCommandLineArgs().Skip(1).ToArray());
+        Opened += async (_, _) =>
+        {
+            await HandleCommandLineAsync(Environment.GetCommandLineArgs().Skip(1).ToArray());
+            await InitCommunityAsync();
+        };
     }
 
     /// <summary>Optional: <c>GcodeRecovery [file] [--height mm] [--range mm] [--tab n] [--stream-dry]</c> opens and analyzes directly.</summary>
     private async Task HandleCommandLineAsync(string[] args)
     {
+        var t0 = Array.IndexOf(args, "--tab");
+        if (t0 >= 0 && t0 + 1 < args.Length && int.TryParse(args[t0 + 1], out var firstTab)) Tabs.SelectedIndex = firstTab;
         var file = args.FirstOrDefault(a => !a.StartsWith("--", StringComparison.Ordinal) && File.Exists(a));
         if (file is null) return;
         await LoadAsync(Path.GetFullPath(file));

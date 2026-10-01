@@ -58,7 +58,12 @@ public partial class MainWindow
             CameraUrl = string.IsNullOrWhiteSpace(CameraUrlBox.Text) ? null : CameraUrlBox.Text.Trim(),
         };
         // The access code is deliberately not persisted.
-        new AppSettings { ConnectionType = ConnTypeBox.SelectedIndex, Host = settings.Host, Serial = settings.Serial, CameraUrl = settings.CameraUrl ?? "" }.Save();
+        var saved = AppSettings.Load();
+        saved.ConnectionType = ConnTypeBox.SelectedIndex;
+        saved.Host = settings.Host;
+        saved.Serial = settings.Serial;
+        saved.CameraUrl = settings.CameraUrl ?? "";
+        saved.Save();
 
         IPrinterConnection printer = IsBambuConnection ? new BambuConnection(settings) : new MoonrakerConnection(settings);
         printer.Log += (_, m) => OnUi(() => PrinterLog(m));
@@ -101,6 +106,7 @@ public partial class MainWindow
 
     private void ShowStatus(PrinterStatus s)
     {
+        _uploadTracker?.Observe(s.State, s.FileName);
         static string T(double? v, double? target) => v is null ? "–" : target is > 0 ? $"{v:0}/{target:0} °C" : $"{v:0} °C";
         StatusText.Text =
             $"{_printer?.Name}\nState: {s.State}   Progress: {(s.ProgressPercent is { } p ? $"{p:0}%" : "–")}" +
@@ -169,8 +175,17 @@ public partial class MainWindow
         }
         UploadProgress.IsVisible = true;
         UploadProgress.Value = 0;
-        await Do($"Upload and start {Path.GetFileName(path)}", p =>
-            p.UploadAndStartAsync(path, new Progress<double>(v => UploadProgress.Value = v)));
+        try
+        {
+            await printer.UploadAndStartAsync(path, new Progress<double>(v => UploadProgress.Value = v));
+            PrinterLog($"Upload and start {Path.GetFileName(path)} sent.");
+            if (path != _lastTouchTestPath && _savedJobs.TryGetValue(path, out var job))
+                TrackUploadedJob(Path.GetFileName(path).Replace(' ', '_'), job.Printer, job.Grams);
+        }
+        catch (Exception ex)
+        {
+            PrinterLog($"Upload and start {Path.GetFileName(path)} failed: {ex.Message}");
+        }
         UploadProgress.IsVisible = false;
     }
 

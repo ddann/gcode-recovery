@@ -84,6 +84,32 @@ In short, it combines: automatic **safe touch-point search** in the G-code, **lo
 itself**, reuse of the **original mesh**, a **3D preview** of the exact recovery motion, **live printer control**,
 and **live offset / layer-jump correction**.
 
+## Updates and anonymous community statistics
+
+The app asks the community server (`https://gcode-recovery.dachstar.app`, configurable in Settings) whether a newer
+release exists and shows a banner with a download link. With your consent (asked once, changeable in Settings) it
+also counts, anonymously, **how much filament recoveries save** and **how many people use the app right now**.
+
+| Sent | When | Contents |
+|---|---|---|
+| Update check | at start (can be disabled) | app version, platform |
+| Heartbeat | every 5 min while open, only with consent | random number created at start-up (memory only, never saved), app version, platform |
+| Job report | when a recovery **finished** (stream completed, or the printer reported the uploaded job as finished), only with consent | random job number (de-duplication), app version, platform, printer family (`bambu-p1s` / `snapmaker-u1` / `custom`), `stream`/`upload`, whole grams saved |
+
+**Never sent:** G-code, file names, paths, printer IP / serial / access code, positions, layer data, user identifiers.
+Touch tests and dry runs are never reported. Grams saved = filament in the layers that are already on the bed
+(diameter and density from the slicer settings, defaults 1.75 mm / 1.24 g/cm³), computed locally.
+
+The server ([`src/GcodeRecovery.Server`](src/GcodeRecovery.Server)) logs no requests, reads no IP addresses
+(rate limiting is one global bucket), accepts only the fields above (each checked against an allow-list, bodies
+≤ 2 KB) and stores only aggregates: per job the date (no time), version, platform, printer family, method and grams;
+per day the peak number of concurrent users. The tests check that the database has no other columns. Public totals:
+`/` and `/v1/stats`.
+
+Self-hosting: `docker compose -f deploy/community-server/docker-compose.yml up -d --build` (listens on
+`127.0.0.1:4090`; publish it with a Cloudflare Tunnel public hostname → `http://localhost:4090`), or
+`scripts/deploy-community-server.sh user@host`.
+
 ## Install (macOS, Apple silicon)
 
 1. Download `GcodeRecovery-<version>-macos-arm64.dmg` from
@@ -136,7 +162,7 @@ Command line (handy for testing): `GcodeRecovery file.gcode --height 8.4 [--rang
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ```bash
-dotnet test tests/GcodeRecovery.Core.Tests          # unit tests
+dotnet test GcodeRecovery.sln                        # all tests (engine, server, privacy)
 dotnet run --project src/GcodeRecovery.App           # run the app
 scripts/package-macos.sh                              # macOS .app + DMG + zip into artifacts/
 dotnet publish src/GcodeRecovery.App -c Release -r win-x64 --self-contained   # or linux-x64
@@ -150,6 +176,8 @@ src/GcodeRecovery.Core       UI-independent engine: G-code parsing, layer index,
                              recovery planning/generation, 3D toolpath simulation, live streamer
 src/GcodeRecovery.Printers   Printer connections: Bambu LAN (MQTT/FTPS/camera), Moonraker (HTTP/MJPEG)
 src/GcodeRecovery.App        Avalonia desktop app (fullscreen workspace, 2D/3D views)
+src/GcodeRecovery.Telemetry  Anonymous update/statistics contract + client (the complete list of what can be sent)
+src/GcodeRecovery.Server     Community server: update checks, anonymous counters (ASP.NET Core + SQLite, Docker)
 tests/                       xUnit tests for the core engine
 scripts/                     packaging, icon rendering, sample generator
 examples/                    sample-p1s.gcode to try the app without a printer

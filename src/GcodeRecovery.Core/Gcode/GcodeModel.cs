@@ -13,6 +13,12 @@ public sealed class GcodeModel
     public bool FirstLayerHeightFromSettings { get; init; }
 
     public string Slicer { get; init; } = "Unknown";
+
+    /// <summary>Filament diameter (mm) from slicer settings; 1.75 when not stated.</summary>
+    public double FilamentDiameter { get; init; } = 1.75;
+
+    /// <summary>Filament density (g/cm³) from slicer settings; 1.24 (PLA) when not stated.</summary>
+    public double FilamentDensity { get; init; } = 1.24;
     public string? PrinterModel { get; init; }
 
     /// <summary>"Marker" when slicer layer-change comments were used, "Z" for the motion-based fallback.</summary>

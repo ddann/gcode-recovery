@@ -138,6 +138,7 @@ public partial class MainWindow
                 if (asArchive) GcodeSource.WriteArchive(source.FilePath, source.ArchiveEntry!, outPath, r.Lines);
                 else GcodeSource.WriteGcode(outPath, r.Lines);
             });
+            if (!touchTestOnly) _savedJobs[outPath] = (profile.Id, FilamentSavings.Grams(model, plan));
             Log($"Regenerated {Path.GetFileName(outPath)} with the current options.");
             return true;
         }
@@ -209,6 +210,7 @@ public partial class MainWindow
             else
             {
                 _lastRecoveryPath = outPath;
+                _savedJobs[outPath] = (profile.Id, FilamentSavings.Grams(model, plan));
                 Log($"Recovery program saved: {outPath}\n  kept {result.KeptLines:N0} original lines, dropped {result.DiscardedLines:N0}; " +
                     $"resume layer {plan.ResumeLayer.Index + 1} printed at Z {plan.ResumeZ:0.###} (gap {plan.ResumeGap:0.###} mm).");
             }
@@ -229,6 +231,9 @@ public partial class MainWindow
     }
 
     private IReadOnlyList<Move3D> _lastGhost = [];
+
+    /// <summary>Saved recovery files and the filament they save (kept in memory only, for completion reports).</summary>
+    private readonly Dictionary<string, (string Printer, double Grams)> _savedJobs = new();
 
     private async Task UpdatePreview3DAsync()
     {

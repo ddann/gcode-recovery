@@ -27,8 +27,16 @@
 
     <!-- ===================================================================== WORKSPACE -->
     <TabItem Header="Workspace">
-      <Grid RowDefinitions="*,6,120">
-        <Grid ColumnDefinitions="350,10,*,10,420">
+      <Grid RowDefinitions="Auto,*,6,120">
+        <Border x:Name="UpdateBanner" IsVisible="False" Background="#2a7de1" CornerRadius="8" Padding="12,6" Margin="0,0,0,8">
+          <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+            <TextBlock x:Name="UpdateText" Foreground="White" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <Button Grid.Column="1" x:Name="UpdateDownloadButton" Content="Download" />
+            <Button Grid.Column="2" x:Name="UpdateNotesButton" Content="What's new" />
+            <Button Grid.Column="3" x:Name="UpdateLaterButton" Content="Later" />
+          </Grid>
+        </Border>
+        <Grid Grid.Row="1" ColumnDefinitions="350,10,*,10,420">
 
           <!-- ============ LEFT: recover ============ -->
           <ScrollViewer HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0">
@@ -239,7 +247,7 @@
           </ScrollViewer>
         </Grid>
 
-        <TextBox Grid.Row="2" x:Name="LogBox" Classes="code" IsReadOnly="True" TextWrapping="Wrap" />
+        <TextBox Grid.Row="3" x:Name="LogBox" Classes="code" IsReadOnly="True" TextWrapping="Wrap" />
       </Grid>
     </TabItem>
 
@@ -296,6 +304,19 @@
             <CheckBox x:Name="ZHomeBox" Margin="0,6,0,0">
               <TextBlock TextWrapping="Wrap" Text="Snapmaker U1: home Z at the bed corner (X10 Y10) instead of setting Z without homing. Only used when that corner is at least 8 mm clear of the part; no force_move needed." />
             </CheckBox>
+
+            <TextBlock Classes="h2" Text="Community &amp; updates" />
+            <TextBlock x:Name="CommunityStatsText" FontSize="13" TextWrapping="Wrap" Text="Community statistics not loaded yet." />
+            <CheckBox x:Name="ShareStatsBox">
+              <TextBlock TextWrapping="Wrap" Text="Share anonymous statistics: grams of filament saved by completed recoveries, and that the app is open right now." />
+            </CheckBox>
+            <CheckBox x:Name="CheckUpdatesBox" Content="Check for updates at start" />
+            <Grid ColumnDefinitions="140,*" ColumnSpacing="6">
+              <TextBlock VerticalAlignment="Center" Text="Server" />
+              <TextBox Grid.Column="1" x:Name="ServerUrlBox" />
+            </Grid>
+            <Button x:Name="CheckUpdateNowButton" Content="Check for updates now" />
+            <TextBlock Classes="hint" TextWrapping="Wrap" x:Name="PrivacyText" />
           </StackPanel>
 
           <StackPanel Grid.Column="2" Spacing="4">

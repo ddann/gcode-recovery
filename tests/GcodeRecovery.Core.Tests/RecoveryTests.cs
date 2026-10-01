@@ -228,3 +228,28 @@ public class RestoreOrderTests
         Assert.True(g90 > restore && g90 < m83);
     }
 }
+
+public class FilamentSavingsTests
+{
+    [Fact]
+    public void Saved_filament_is_the_material_already_on_the_bed()
+    {
+        var model = LayerParser.Parse(SyntheticGcode.SolidBlock(layers: 50));
+        var plan = RecoveryPlan.Create(model, 9, 110, 110, new RecoveryOptions());
+        // 10 layers × 51 raster lines × 0.8 mm; the purge line of the start G-code is not counted.
+        Assert.Equal(408.0, FilamentSavings.FilamentMm(model, plan), 3);
+        Assert.Equal(1.75, model.FilamentDiameter);
+        Assert.Equal(408.0 * Math.PI * 0.875 * 0.875 / 1000 * 1.24, FilamentSavings.Grams(model, plan), 6);
+    }
+
+    [Fact]
+    public void Material_settings_are_read_from_the_slicer_block()
+    {
+        var lines = SyntheticGcode.SolidBlock(layers: 5);
+        lines.Add("; filament_diameter = 2.85,2.85");
+        lines.Add("; filament_density = 1.27");
+        var model = LayerParser.Parse(lines);
+        Assert.Equal(2.85, model.FilamentDiameter);
+        Assert.Equal(1.27, model.FilamentDensity);
+    }
+}

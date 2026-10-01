@@ -1,0 +1,28 @@
+# Gcode Recovery community server (update checks + anonymous counters).
+# Listens on 127.0.0.1:4090 only; publish it through a Cloudflare Tunnel public hostname
+# (service: http://localhost:4090). No IP addresses are logged or stored.
+services:
+  community:
+    build:
+      context: ../..
+      dockerfile: src/GcodeRecovery.Server/Dockerfile
+    image: gcode-recovery-community
+    container_name: gcode-recovery-community
+    restart: unless-stopped
+    network_mode: bridge          # default bridge: no new Docker network is created
+    ports:
+      - "127.0.0.1:4090:8080"
+    volumes:
+      - community-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: local
+      options:
+        max-size: 5m
+
+volumes:
+  community-data:

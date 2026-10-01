@@ -21,6 +21,9 @@ public sealed class LayerInfo
 
     public List<Segment> Segments { get; } = new();
 
+    /// <summary>Net filament length fed in this layer (mm of filament, retractions subtracted).</summary>
+    public double FilamentMm { get; set; }
+
     /// <summary>Machine state immediately before <see cref="StartLine"/> is executed.</summary>
     public required MachineState StateAtStart { get; init; }
 

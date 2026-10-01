@@ -14,7 +14,9 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - run: dotnet test tests/GcodeRecovery.Core.Tests -c Release
+      - run: dotnet test GcodeRecovery.sln -c Release
+      - name: Build community server image
+        run: docker build -f src/GcodeRecovery.Server/Dockerfile -t gcode-recovery-community .
 
   publish:
     needs: test

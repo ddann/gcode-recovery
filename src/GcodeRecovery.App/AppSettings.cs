@@ -10,6 +10,14 @@ public sealed class AppSettings
     public string Serial { get; set; } = "";
     public string CameraUrl { get; set; } = "";
 
+    /// <summary>Anonymous statistics consent: null = not asked yet.</summary>
+    public bool? ShareStatistics { get; set; }
+
+    public bool CheckForUpdates { get; set; } = true;
+    public string CommunityServer { get; set; } = GcodeRecovery.Telemetry.CommunityClient.DefaultServer;
+
+    public static string DataDirectory => Path.GetDirectoryName(FilePath)!;
+
     private static string FilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GcodeRecovery", "settings.json");
 

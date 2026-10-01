@@ -18,5 +18,6 @@
   <ItemGroup>
     <ProjectReference Include="../GcodeRecovery.Core/GcodeRecovery.Core.csproj" />
     <ProjectReference Include="../GcodeRecovery.Printers/GcodeRecovery.Printers.csproj" />
+    <ProjectReference Include="../GcodeRecovery.Telemetry/GcodeRecovery.Telemetry.csproj" />
   </ItemGroup>
 </Project>

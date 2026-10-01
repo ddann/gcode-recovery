@@ -14,6 +14,7 @@ public partial class MainWindow
     private IReadOnlyList<string>? _streamLines;
     private string _streamName = "";
     private bool _streamFromRecovery;
+    private (string Printer, double Grams)? _streamJob;
     private GcodeStreamer? _streamer;
     private CancellationTokenSource? _streamCts;
     private DispatcherTimer? _streamTimer;
@@ -76,6 +77,7 @@ public partial class MainWindow
         _lastGhost = ghost;
         await SetStreamProgramAsync(lines, $"recovery program (resume layer {built.Plan.ResumeLayer.Index + 1})");
         _streamFromRecovery = true;
+        _streamJob = (built.Profile.Id, FilamentSavings.Grams(model, built.Plan));
     }
 
     private async Task LoadStreamFromFileAsync()
@@ -89,6 +91,7 @@ public partial class MainWindow
         var source = await Task.Run(() => GcodeSource.Load(path));
         await SetStreamProgramAsync(source.Lines, Path.GetFileName(path));
         _streamFromRecovery = false;
+        _streamJob = null;
     }
 
     private async Task SetStreamProgramAsync(IReadOnlyList<string> lines, string name)
@@ -142,6 +145,7 @@ public partial class MainWindow
         _streamCts = new CancellationTokenSource();
         var streamer = _streamer;
         var ct = _streamCts.Token;
+        var countAsJob = sink is PrinterSink && _streamFromRecovery ? _streamJob : null;
         Log($"Streaming {_streamName} {(sink is DryRunSink ? "(dry run)" : "to the printer")}.");
         StreamStartButton.IsEnabled = false;
         StreamPauseButton.IsEnabled = StreamPlayButton.IsEnabled = StreamStopButton.IsEnabled = true;
@@ -152,6 +156,8 @@ public partial class MainWindow
             {
                 var snap = streamer.Snapshot();
                 Log($"Streaming ended: {snap.State}{(snap.Error is null ? "" : " — " + snap.Error)}");
+                if (snap.State == StreamerState.Finished && countAsJob is { } job)
+                    ReportCompletedJob("stream", job.Printer, job.Grams);
                 _pendingOffset = snap.Offset;
                 _streamCts = null;
                 StreamStartButton.IsEnabled = true;

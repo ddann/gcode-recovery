@@ -30,6 +30,12 @@ public static partial class LayerParser
     [GeneratedRegex(@"^\s*;\s*(?:printer_model|printer_settings_id)\s*=\s*(.+)$", RegexOptions.IgnoreCase)]
     private static partial Regex PrinterModelSetting();
 
+    [GeneratedRegex(@"^\s*;\s*filament_diameter\s*=\s*([\d.]+)", RegexOptions.IgnoreCase)]
+    private static partial Regex DiameterSetting();
+
+    [GeneratedRegex(@"^\s*;\s*filament_density\s*=\s*([\d.]+)", RegexOptions.IgnoreCase)]
+    private static partial Regex DensitySetting();
+
     public static GcodeModel Parse(IReadOnlyList<string> lines)
     {
         var useMarkers = lines.Any(l => l.Length < 40 && LayerMarker().IsMatch(l));
@@ -37,6 +43,7 @@ public static partial class LayerParser
         var layers = new List<LayerInfo>();
         LayerInfo? current = null;
         double? firstLayerSetting = null;
+        double? diameter = null, density = null;
         string? printerModel = null;
         var lastZMoveLine = 0;
         MachineState? beforeLastZMove = null;
@@ -55,6 +62,8 @@ public static partial class LayerParser
                     continue;
                 }
                 ReadComment(raw, current, state, ref firstLayerSetting, ref printerModel);
+                if (diameter is null && DiameterSetting().Match(raw) is { Success: true } dm) diameter = Num(dm);
+                if (density is null && DensitySetting().Match(raw) is { Success: true } dn) density = Num(dn);
                 continue;
             }
 
@@ -76,6 +85,7 @@ public static partial class LayerParser
                 extruded = state.AbsoluteE ? e - e0 : e;
                 state.E = state.AbsoluteE ? e : e0 + e;
             }
+            if (current is not null && extruded != 0) current.FilamentMm += extruded;
             if (Math.Abs(state.Z - z0) > 1e-9)
             {
                 lastZMoveLine = i;
@@ -107,6 +117,8 @@ public static partial class LayerParser
             FirstLayerHeight = firstLayer,
             FirstLayerHeightFromSettings = firstLayerSetting.HasValue,
             Slicer = DetectSlicer(lines),
+            FilamentDiameter = diameter is > 0.5 and < 5 ? diameter.Value : 1.75,
+            FilamentDensity = density is > 0.3 and < 5 ? density.Value : 1.24,
             PrinterModel = printerModel,
             LayerDetection = useMarkers ? "Marker" : "Z",
             HeaderLineCount = CountHeaderLines(lines),
@@ -194,7 +206,7 @@ public static partial class LayerParser
                 layers[i] = new LayerInfo
                 {
                     Index = i, StartLine = copy.StartLine, EndLine = copy.EndLine,
-                    Z = copy.Z, Height = copy.Height, StateAtStart = copy.StateAtStart,
+                    Z = copy.Z, Height = copy.Height, StateAtStart = copy.StateAtStart, FilamentMm = copy.FilamentMm,
                 };
                 layers[i].Segments.AddRange(copy.Segments);
             }
