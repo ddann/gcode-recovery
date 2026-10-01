@@ -22,7 +22,7 @@ public sealed class CommunityClient : IDisposable
 
     public CommunityClient(string serverUrl, string queueDirectory, HttpMessageHandler? handler = null)
     {
-        _http = handler is null ? new HttpClient() : new HttpClient(handler);
+        _http = new HttpClient(handler ?? ResilientDns.CreateHandler());
         _http.BaseAddress = new Uri(serverUrl.TrimEnd('/') + "/");
         _http.Timeout = TimeSpan.FromSeconds(15);
         // No cookies, no custom identifiers; a generic agent so the server can't tell users apart by it.

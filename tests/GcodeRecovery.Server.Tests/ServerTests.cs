@@ -234,3 +234,20 @@ public class CompletionTrackerTests
         Assert.Equal(0, count);
     }
 }
+
+public class ResilientDnsTests
+{
+    [Fact]
+    public async Task Doh_resolves_the_community_server()
+    {
+        try
+        {
+            var ips = await ResilientDns.ResolveViaDohAsync("one.one.one.one", CancellationToken.None);
+            Assert.Contains(ips, ip => ip.ToString() is "1.1.1.1" or "1.0.0.1");
+        }
+        catch (HttpRequestException)
+        {
+            // No internet on this runner: nothing to check.
+        }
+    }
+}
