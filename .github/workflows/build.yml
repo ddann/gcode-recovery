@@ -1,0 +1,44 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet test tests/GcodeRecovery.Core.Tests -c Release
+
+  publish:
+    needs: test
+    strategy:
+      matrix:
+        include:
+          - { os: windows-latest, rid: win-x64 }
+          - { os: ubuntu-latest, rid: linux-x64 }
+          - { os: macos-latest, rid: osx-arm64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Publish
+        if: matrix.rid != 'osx-arm64'
+        run: dotnet publish src/GcodeRecovery.App -c Release -r ${{ matrix.rid }} --self-contained true -p:DebugType=None -o artifacts/GcodeRecovery-${{ matrix.rid }}
+      - name: Package macOS app
+        if: matrix.rid == 'osx-arm64'
+        run: scripts/package-macos.sh osx-arm64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GcodeRecovery-${{ matrix.rid }}
+          path: |
+            artifacts/GcodeRecovery-${{ matrix.rid }}
+            artifacts/*.dmg

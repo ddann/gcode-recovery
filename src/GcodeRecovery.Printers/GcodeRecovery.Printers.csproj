@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>GcodeRecovery.Printers</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Bambu Lab LAN MQTT client (MIT): https://github.com/ColdThunder11/Bambu.NET -->
+    <PackageReference Include="Bambu.NET" Version="0.1.6" />
+    <!-- FTPS upload to the printer's SD card (MIT): https://github.com/robinrodricks/FluentFTP -->
+    <PackageReference Include="FluentFTP" Version="54.2.1" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,331 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:GcodeRecovery.App"
+        x:Class="GcodeRecovery.App.MainWindow"
+        x:CompileBindings="False"
+        Title="Gcode Recovery" Width="1600" Height="980" MinWidth="1180" MinHeight="720"
+        WindowState="FullScreen">
+  <Window.Styles>
+    <Style Selector="Button">
+      <Setter Property="Padding" Value="9,4" />
+    </Style>
+    <Style Selector="Button.grid">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.panel">
+      <Setter Property="Background" Value="#0c808080" />
+      <Setter Property="BorderBrush" Value="#30808080" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="10,4,10,10" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+  </Window.Styles>
+
+  <TabControl x:Name="Tabs" Margin="8,0,8,6">
+
+    <!-- ===================================================================== WORKSPACE -->
+    <TabItem Header="Workspace">
+      <Grid RowDefinitions="*,6,120">
+        <Grid ColumnDefinitions="350,10,*,10,420">
+
+          <!-- ============ LEFT: recover ============ -->
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0">
+            <StackPanel>
+              <Border Classes="panel">
+                <StackPanel Spacing="6">
+                  <TextBlock Classes="h2" Text="1  Original G-code" />
+                  <Border x:Name="DropZone" BorderBrush="#7f8a99" BorderThickness="1.5" CornerRadius="6" Padding="10" DragDrop.AllowDrop="True">
+                    <StackPanel Spacing="6">
+                      <TextBlock Classes="hint" Text="Drop the .gcode / .gcode.3mf that was printed" />
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Button x:Name="OpenButton" Content="Open file…" />
+                        <ComboBox x:Name="PlateBox" IsVisible="False" MinWidth="150" />
+                      </StackPanel>
+                      <TextBlock x:Name="FileInfo" Classes="hint" Text="No file loaded." />
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </Border>
+
+              <Border Classes="panel">
+                <StackPanel Spacing="6">
+                  <TextBlock Classes="h2" Text="2  Measurement" />
+                  <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="5">
+                    <TextBlock VerticalAlignment="Center" Text="Printer" />
+                    <ComboBox Grid.Column="1" x:Name="ProfileBox" HorizontalAlignment="Stretch" />
+                    <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Measured height (mm)" />
+                    <NumericUpDown Grid.Row="1" Grid.Column="1" x:Name="HeightBox" Minimum="0.1" Maximum="1000" Increment="0.1" Value="10" FormatString="0.00" />
+                    <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Search range ± (mm)" />
+                    <NumericUpDown Grid.Row="2" Grid.Column="1" x:Name="RangeBox" Minimum="0.05" Maximum="5" Increment="0.1" Value="0.4" FormatString="0.00" />
+                    <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Min. touch area (mm)" />
+                    <NumericUpDown Grid.Row="3" Grid.Column="1" x:Name="MinTouchBox" Minimum="0.8" Maximum="30" Increment="0.5" Value="3" FormatString="0.0" />
+                  </Grid>
+                  <Button x:Name="AnalyzeButton" Content="Analyze" Classes="accent grid" IsEnabled="False" />
+                </StackPanel>
+              </Border>
+
+              <Border Classes="panel">
+                <StackPanel Spacing="6">
+                  <TextBlock Classes="h2" Text="3  Layer and touch point" />
+                  <TextBlock Classes="hint" Text="Last fully printed layer — its top is what the nozzle touches. The next layer is reprinted from its first line." />
+                  <ComboBox x:Name="SurfaceLayerBox" HorizontalAlignment="Stretch" />
+                  <CheckBox x:Name="MidLayerBox" Content="Print stopped in the middle of a layer" />
+                  <TextBlock x:Name="TouchInfo" Classes="hint" />
+                  <TextBlock Classes="hint" Text="Click the layer view to move the touch point (must be green)." />
+                </StackPanel>
+              </Border>
+
+              <Border Classes="panel">
+                <StackPanel Spacing="6">
+                  <TextBlock Classes="h2" Text="4  Run" />
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="6" RowDefinitions="Auto,Auto" RowSpacing="6">
+                    <Button x:Name="TouchTestButton" Content="Save touch test…" Classes="grid" IsEnabled="False" />
+                    <Button Grid.Column="1" x:Name="GenerateButton" Content="Save recovery file…" Classes="accent grid" IsEnabled="False" />
+                    <Button Grid.Row="1" x:Name="UploadTestButton" Content="Upload &amp; run test" Classes="grid" />
+                    <Button Grid.Row="1" Grid.Column="1" x:Name="UploadRecoveryButton" Content="Upload &amp; start" Classes="grid" />
+                  </Grid>
+                  <ProgressBar x:Name="UploadProgress" Minimum="0" Maximum="100" Height="5" IsVisible="False" />
+                  <TextBlock Classes="hint" Text="…or stream it from this computer with live correction (right)." />
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
+                    <Button x:Name="StreamRecoveryButton" Content="Stream recovery" Classes="grid" />
+                    <Button Grid.Column="1" x:Name="StreamFileButton" Content="Stream a file…" Classes="grid" />
+                  </Grid>
+                  <TextBlock x:Name="StreamInfo" Classes="hint" Text="No stream program loaded." />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+
+          <!-- ============ CENTER: 3D + layer view ============ -->
+          <Grid Grid.Column="2" RowDefinitions="3*,Auto,8,2*">
+            <Border CornerRadius="8" ClipToBounds="True">
+              <local:Toolpath3DView x:Name="View3D" />
+            </Border>
+            <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="8" Margin="0,6,0,0">
+              <TextBlock VerticalAlignment="Center" Classes="hint" Text="Program position" />
+              <Slider Grid.Column="1" x:Name="ScrubSlider" Minimum="0" Maximum="1" />
+              <TextBlock Grid.Column="2" VerticalAlignment="Center" Classes="hint" Text="Layers shown" />
+              <NumericUpDown Grid.Column="3" x:Name="PreviewLayersBox" Minimum="1" Maximum="100000" Value="15" Increment="5" FormatString="0" Width="110" />
+              <Button Grid.Column="4" x:Name="ResetViewButton" Content="Reset view" />
+            </Grid>
+            <Grid Grid.Row="3" ColumnDefinitions="*,8,*">
+              <Border CornerRadius="8" ClipToBounds="True">
+                <local:LayerPreview x:Name="Preview" />
+              </Border>
+              <Grid Grid.Column="2" RowDefinitions="Auto,*">
+                <TextBlock Classes="hint" Text="Next lines to the printer (live offset applied)" Margin="0,0,0,3" />
+                <TextBox Grid.Row="1" x:Name="UpcomingBox" Classes="code" IsReadOnly="True" />
+              </Grid>
+            </Grid>
+          </Grid>
+
+          <!-- ============ RIGHT: printer + live control ============ -->
+          <ScrollViewer Grid.Column="4" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0">
+            <StackPanel>
+              <Border Classes="panel" Padding="6">
+                <Grid RowDefinitions="Auto,Auto">
+                  <Border Background="#111" CornerRadius="6" Height="226" ClipToBounds="True">
+                    <Image x:Name="CameraImage" Stretch="Uniform" />
+                  </Border>
+                  <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
+                    <Button x:Name="ConnectButton" Content="Connect" Classes="accent" />
+                    <Button x:Name="DisconnectButton" Content="Disconnect" IsEnabled="False" />
+                    <Button x:Name="CameraButton" Content="Camera" IsEnabled="False" />
+                    <TextBlock x:Name="CameraInfo" Classes="hint" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Grid>
+              </Border>
+              <TextBlock x:Name="StatusText" Classes="hint" FontSize="12" Margin="2,0,0,8" Text="Not connected. Connection details are in Settings." />
+
+              <Border Classes="panel">
+                <StackPanel Spacing="6">
+                  <TextBlock Classes="h2" Text="Live stream" />
+                  <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="4">
+                    <Button x:Name="StreamStartButton" Content="Start" Classes="accent grid" IsEnabled="False" />
+                    <Button Grid.Column="1" x:Name="StreamPauseButton" Content="Pause" Classes="grid" IsEnabled="False" />
+                    <Button Grid.Column="2" x:Name="StreamPlayButton" Content="Play" Classes="grid" IsEnabled="False" />
+                    <Button Grid.Column="3" x:Name="StreamStopButton" Content="Stop" Classes="grid" IsEnabled="False" />
+                  </Grid>
+                  <CheckBox x:Name="DryRunBox" Content="Dry run (simulate, nothing is sent)" />
+                  <ProgressBar x:Name="StreamProgress" Minimum="0" Maximum="100" Height="5" />
+                  <TextBlock x:Name="StreamStatus" Classes="hint" />
+
+                  <TextBlock Text="Offset (mm)" FontWeight="SemiBold" Margin="0,4,0,0" />
+                  <Grid ColumnDefinitions="22,*,*,70,*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="4">
+                    <TextBlock VerticalAlignment="Center" Text="X" FontWeight="SemiBold" />
+                    <Button Grid.Column="1" x:Name="Xm1" Content="−1" Classes="grid" />
+                    <Button Grid.Column="2" x:Name="Xm01" Content="−0.1" Classes="grid" />
+                    <TextBlock Grid.Column="3" x:Name="OffXText" Text="0.00" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Menlo, Consolas, monospace" />
+                    <Button Grid.Column="4" x:Name="Xp01" Content="+0.1" Classes="grid" />
+                    <Button Grid.Column="5" x:Name="Xp1" Content="+1" Classes="grid" />
+                    <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Y" FontWeight="SemiBold" />
+                    <Button Grid.Row="1" Grid.Column="1" x:Name="Ym1" Content="−1" Classes="grid" />
+                    <Button Grid.Row="1" Grid.Column="2" x:Name="Ym01" Content="−0.1" Classes="grid" />
+                    <TextBlock Grid.Row="1" Grid.Column="3" x:Name="OffYText" Text="0.00" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Menlo, Consolas, monospace" />
+                    <Button Grid.Row="1" Grid.Column="4" x:Name="Yp01" Content="+0.1" Classes="grid" />
+                    <Button Grid.Row="1" Grid.Column="5" x:Name="Yp1" Content="+1" Classes="grid" />
+                    <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Z" FontWeight="SemiBold" />
+                    <Button Grid.Row="2" Grid.Column="1" x:Name="Zm01" Content="−0.1" Classes="grid" />
+                    <Button Grid.Row="2" Grid.Column="2" x:Name="Zm002" Content="−0.02" Classes="grid" />
+                    <TextBlock Grid.Row="2" Grid.Column="3" x:Name="OffZText" Text="0.00" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Menlo, Consolas, monospace" />
+                    <Button Grid.Row="2" Grid.Column="4" x:Name="Zp002" Content="+0.02" Classes="grid" />
+                    <Button Grid.Row="2" Grid.Column="5" x:Name="Zp01" Content="+0.1" Classes="grid" />
+                  </Grid>
+                  <Button x:Name="ResetOffsetButton" Content="Reset offset" />
+
+                  <TextBlock Text="Layer" FontWeight="SemiBold" Margin="0,4,0,0" />
+                  <TextBlock x:Name="StreamLayerText" Classes="hint" />
+                  <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                    <Button x:Name="LayerDownButton" Content="◀ −1" Classes="grid" />
+                    <Button Grid.Column="1" x:Name="RepeatLayerButton" Content="↻ Repeat" Classes="grid" />
+                    <Button Grid.Column="2" x:Name="LayerUpButton" Content="+1 ▶" Classes="grid" />
+                  </Grid>
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock VerticalAlignment="Center" Text="Go to layer" />
+                    <NumericUpDown x:Name="JumpLayerBox" Minimum="1" Maximum="100000" Value="1" FormatString="0" Width="120" />
+                    <Button x:Name="JumpLayerButton" Content="Go" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+              <Border Classes="panel">
+                <StackPanel x:Name="ControlsPanel" Spacing="6" IsEnabled="False">
+                  <TextBlock Classes="h2" Text="Printer" />
+                  <Grid ColumnDefinitions="*,*,*,*,*" ColumnSpacing="4">
+                    <Button x:Name="PauseButton" Content="Pause" Classes="grid" />
+                    <Button Grid.Column="1" x:Name="ResumeButton" Content="Resume" Classes="grid" />
+                    <Button Grid.Column="2" x:Name="StopButton" Content="Stop" Classes="grid" Background="#a33" Foreground="White" />
+                    <Button Grid.Column="3" x:Name="LightOnButton" Content="Light" Classes="grid" />
+                    <Button Grid.Column="4" x:Name="LightOffButton" Content="Dark" Classes="grid" />
+                  </Grid>
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock VerticalAlignment="Center" Text="Jog step" />
+                    <ComboBox x:Name="StepBox" SelectedIndex="1">
+                      <ComboBoxItem Content="0.1" />
+                      <ComboBoxItem Content="1" />
+                      <ComboBoxItem Content="10" />
+                    </ComboBox>
+                    <Button x:Name="HomeXYButton" Content="Home X/Y" />
+                  </StackPanel>
+                  <Grid ColumnDefinitions="*,*,*,*,*,*" ColumnSpacing="4">
+                    <Button x:Name="XMinus" Content="X−" Classes="grid" />
+                    <Button Grid.Column="1" x:Name="XPlus" Content="X+" Classes="grid" />
+                    <Button Grid.Column="2" x:Name="YMinus" Content="Y−" Classes="grid" />
+                    <Button Grid.Column="3" x:Name="YPlus" Content="Y+" Classes="grid" />
+                    <Button Grid.Column="4" x:Name="ZMinus" Content="Z−" Classes="grid" />
+                    <Button Grid.Column="5" x:Name="ZPlus" Content="Z+" Classes="grid" />
+                  </Grid>
+                  <TextBlock Classes="hint" Text="Never home Z with the part on the bed. +Z lowers the bed (P1S, U1)." />
+                  <Grid ColumnDefinitions="70,*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="6">
+                    <TextBlock VerticalAlignment="Center" Text="Nozzle °C" />
+                    <NumericUpDown Grid.Column="1" x:Name="NozzleSetBox" Minimum="0" Maximum="300" Increment="5" Value="0" FormatString="0" />
+                    <Button Grid.Column="2" x:Name="NozzleSetButton" Content="Set" />
+                    <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Bed °C" />
+                    <NumericUpDown Grid.Row="1" Grid.Column="1" x:Name="BedSetBox" Minimum="0" Maximum="120" Increment="5" Value="60" FormatString="0" />
+                    <Button Grid.Row="1" Grid.Column="2" x:Name="BedSetButton" Content="Set" />
+                    <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Fan %" />
+                    <NumericUpDown Grid.Row="2" Grid.Column="1" x:Name="FanSetBox" Minimum="0" Maximum="100" Increment="10" Value="0" FormatString="0" />
+                    <Button Grid.Row="2" Grid.Column="2" x:Name="FanSetButton" Content="Set" />
+                  </Grid>
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                    <TextBox x:Name="ConsoleBox" Classes="code" AcceptsReturn="False" Watermark="G-code, e.g. M400" />
+                    <Button Grid.Column="1" x:Name="ConsoleSendButton" Content="Send" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+
+        <TextBox Grid.Row="2" x:Name="LogBox" Classes="code" IsReadOnly="True" TextWrapping="Wrap" />
+      </Grid>
+    </TabItem>
+
+    <!-- ===================================================================== SETTINGS -->
+    <TabItem Header="Settings">
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <Grid ColumnDefinitions="440,24,*">
+          <StackPanel Spacing="6">
+            <TextBlock Classes="h2" Text="Printer connection (local network)" />
+            <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
+              <TextBlock VerticalAlignment="Center" Text="Type" />
+              <ComboBox Grid.Column="1" x:Name="ConnTypeBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+                <ComboBoxItem Content="Bambu Lab (LAN mode, MQTT)" />
+                <ComboBoxItem Content="Klipper / Moonraker (Snapmaker U1)" />
+              </ComboBox>
+              <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="IP address" />
+              <TextBox Grid.Row="1" Grid.Column="1" x:Name="HostBox" Watermark="192.168.1.50" />
+              <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Serial number" />
+              <TextBox Grid.Row="2" Grid.Column="1" x:Name="SerialBox" Watermark="01P00A…  (Bambu only)" />
+              <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Access code" />
+              <TextBox Grid.Row="3" Grid.Column="1" x:Name="SecretBox" PasswordChar="•" Watermark="Bambu access code / Moonraker API key" />
+              <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Camera URL" />
+              <TextBox Grid.Row="4" Grid.Column="1" x:Name="CameraUrlBox" Watermark="(Moonraker only, optional)" />
+            </Grid>
+            <TextBlock Classes="hint" Text="Bambu: enable LAN mode (and LAN-only liveview for the camera); IP, serial and access code are on the printer screen. The access code is never saved to disk." />
+
+            <TextBlock Classes="h2" Text="Recovery options" />
+            <Grid ColumnDefinitions="170,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
+              <TextBlock VerticalAlignment="Center" Text="Z reference" />
+              <ComboBox Grid.Column="1" x:Name="FrameBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+                <ComboBoxItem Content="Contact = Z0, shift remaining G-code" />
+                <ComboBoxItem Content="Keep original Z values" />
+              </ComboBox>
+              <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Resume layer gap" />
+              <ComboBox Grid.Row="1" Grid.Column="1" x:Name="GapBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+                <ComboBoxItem Content="Layer's own height (exact)" />
+                <ComboBoxItem Content="First-layer height from G-code" />
+              </ComboBox>
+              <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Probe speed (mm/s)" />
+              <NumericUpDown Grid.Row="2" Grid.Column="1" x:Name="ProbeSpeedBox" Minimum="0.5" Maximum="10" Increment="0.5" Value="2" FormatString="0.0" />
+              <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Probe nozzle max (°C)" />
+              <NumericUpDown Grid.Row="3" Grid.Column="1" x:Name="ProbeTempBox" Minimum="30" Maximum="170" Increment="5" Value="80" FormatString="0" />
+              <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Cool-down wait (s)" />
+              <NumericUpDown Grid.Row="4" Grid.Column="1" x:Name="CooldownBox" Minimum="0" Maximum="1200" Increment="30" Value="180" FormatString="0" />
+              <TextBlock Grid.Row="5" VerticalAlignment="Center" Text="Clearance (mm)" />
+              <NumericUpDown Grid.Row="5" Grid.Column="1" x:Name="ClearanceBox" Minimum="1" Maximum="50" Increment="1" Value="5" FormatString="0.0" />
+              <TextBlock Grid.Row="6" VerticalAlignment="Center" Text="Probe travel limit (mm)" />
+              <NumericUpDown Grid.Row="6" Grid.Column="1" x:Name="TravelBox" Minimum="5" Maximum="300" Increment="5" Value="40" FormatString="0" />
+              <TextBlock Grid.Row="7" VerticalAlignment="Center" Text="Purge length (mm)" />
+              <NumericUpDown Grid.Row="7" Grid.Column="1" x:Name="PurgeBox" Minimum="0" Maximum="200" Increment="5" Value="30" FormatString="0" />
+              <TextBlock Grid.Row="8" VerticalAlignment="Center" Text="Trigger over-travel (mm)" />
+              <NumericUpDown Grid.Row="8" Grid.Column="1" x:Name="OvertravelBox" Minimum="-1" Maximum="1" Increment="0.01" Value="0" FormatString="0.00" />
+            </Grid>
+          </StackPanel>
+
+          <StackPanel Grid.Column="2" Spacing="4">
+            <TextBlock Classes="h2" Text="Printer G-code templates" />
+            <TextBlock x:Name="ProfileNotes" Classes="hint" FontSize="13" />
+            <WrapPanel>
+              <Button x:Name="SaveProfileButton" Content="Save profile as JSON…" Margin="0,0,6,6" />
+              <Button x:Name="LoadProfileButton" Content="Load profile JSON…" Margin="0,0,6,6" />
+              <Button x:Name="ResetProfileButton" Content="Reset to built-in" Margin="0,0,6,6" />
+            </WrapPanel>
+            <TextBlock Classes="hint" Text="Placeholders: {touch_x} {touch_y} {contact_z} {safe_z} {bed_temp} {nozzle_temp} {probe_nozzle_temp} {probe_nozzle_max_temp} {cooldown_s} {probe_speed} {probe_feed} {probe_travel} {lift} {travel_feed} {purge_x} {purge_y} {purge_length} {wipe_dx} {tool} {layer}" />
+            <TextBlock Classes="h2" Text="Preparation" />
+            <TextBox x:Name="PrepareTpl" Classes="code" MinHeight="120" />
+            <TextBlock Classes="h2" Text="Bed mesh reuse (no new leveling)" />
+            <TextBox x:Name="LevelingTpl" Classes="code" MinHeight="50" />
+            <TextBlock Classes="h2" Text="Load-cell touch-down" />
+            <TextBox x:Name="ProbeTpl" Classes="code" MinHeight="100" />
+            <TextBlock Classes="h2" Text="Purge and wipe" />
+            <TextBox x:Name="PurgeTpl" Classes="code" MinHeight="120" />
+            <TextBlock Classes="h2" Text="Tool select" />
+            <TextBox x:Name="ToolTpl" Classes="code" MinHeight="30" />
+            <TextBlock Classes="h2" Text="Touch test end" />
+            <TextBox x:Name="TestEndTpl" Classes="code" MinHeight="70" />
+          </StackPanel>
+        </Grid>
+      </ScrollViewer>
+    </TabItem>
+
+    <!-- ===================================================================== CHECKLIST -->
+    <TabItem Header="Checklist">
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <SelectableTextBlock x:Name="HelpText" TextWrapping="Wrap" FontSize="14" Margin="4" MaxWidth="1000" HorizontalAlignment="Left" />
+      </ScrollViewer>
+    </TabItem>
+  </TabControl>
+</Window>
