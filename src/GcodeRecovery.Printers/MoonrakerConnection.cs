@@ -7,7 +7,7 @@ namespace GcodeRecovery.Printers;
 /// Klipper printers through the Moonraker HTTP API (Snapmaker U1 runs a Moonraker fork).
 /// Status is polled once per second; the camera is read from the MJPEG stream.
 /// </summary>
-public sealed class MoonrakerConnection(ConnectionSettings settings) : IPrinterConnection
+public sealed partial class MoonrakerConnection(ConnectionSettings settings) : IPrinterConnection
 {
     private readonly HttpClient _http = new() { Timeout = Timeout.InfiniteTimeSpan };
     private CancellationTokenSource? _poll;

@@ -37,6 +37,33 @@ public sealed record RecoveryOptions
     public double TriggerOvertravelMm { get; init; }
 
     public double TravelFeed { get; init; } = 6000;
+
+    /// <summary>
+    /// Home Z by touching the bed at the profile's Z-home spot instead of setting a provisional Z.
+    /// Only allowed when that spot is clear of the part (see <see cref="PartClearance"/>).
+    /// </summary>
+    public bool HomeZAtClearSpot { get; init; }
+}
+
+/// <summary>Distance checks between a bed position and everything printed so far.</summary>
+public static class PartClearance
+{
+    /// <summary>Smallest XY distance from (x, y) to any extrusion of layers up to <paramref name="lastLayerIndex"/>.</summary>
+    public static double DistanceToPart(GcodeModel model, int lastLayerIndex, double x, double y)
+    {
+        var best = double.MaxValue;
+        foreach (var layer in model.Layers.Take(lastLayerIndex + 1))
+            foreach (var s in layer.Segments)
+            {
+                double dx = s.X2 - s.X1, dy = s.Y2 - s.Y1;
+                var len2 = dx * dx + dy * dy;
+                var t = len2 < 1e-12 ? 0 : Math.Clamp(((x - s.X1) * dx + (y - s.Y1) * dy) / len2, 0, 1);
+                var ex = s.X1 + t * dx - x;
+                var ey = s.Y1 + t * dy - y;
+                best = Math.Min(best, Math.Sqrt(ex * ex + ey * ey) - s.Width / 2);
+            }
+        return best;
+    }
 }
 
 /// <summary>Everything decided about one recovery: which layer was touched, where, and how Z is remapped.</summary>

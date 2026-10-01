@@ -48,6 +48,16 @@ public sealed class PrinterProfile
     /// <summary>End of the touch-test-only program.</summary>
     public string TouchTestEndTemplate { get; set; } = "";
 
+    /// <summary>
+    /// Optional alternative preparation that homes Z by touching the bed at (<see cref="ZHomeX"/>, <see cref="ZHomeY"/>)
+    /// instead of setting a provisional Z. Only safe when that spot is clear of the part; used when
+    /// <see cref="RecoveryOptions.HomeZAtClearSpot"/> is set. Empty = not supported by this printer.
+    /// </summary>
+    public string ZHomePrepareTemplate { get; set; } = "";
+
+    public double ZHomeX { get; set; } = 10;
+    public double ZHomeY { get; set; } = 10;
+
     public PrinterProfile Clone() => JsonSerializer.Deserialize<PrinterProfile>(JsonSerializer.Serialize(this, JsonOptions), JsonOptions)!;
 
     public static readonly JsonSerializerOptions JsonOptions = new()

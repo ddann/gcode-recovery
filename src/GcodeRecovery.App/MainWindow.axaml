@@ -293,6 +293,9 @@
               <TextBlock Grid.Row="8" VerticalAlignment="Center" Text="Trigger over-travel (mm)" />
               <NumericUpDown Grid.Row="8" Grid.Column="1" x:Name="OvertravelBox" Minimum="-1" Maximum="1" Increment="0.01" Value="0" FormatString="0.00" />
             </Grid>
+            <CheckBox x:Name="ZHomeBox" Margin="0,6,0,0">
+              <TextBlock TextWrapping="Wrap" Text="Snapmaker U1: home Z at the bed corner (X10 Y10) instead of setting Z without homing. Only used when that corner is at least 8 mm clear of the part; no force_move needed." />
+            </CheckBox>
           </StackPanel>
 
           <StackPanel Grid.Column="2" Spacing="4">

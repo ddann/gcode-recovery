@@ -105,7 +105,47 @@ public partial class MainWindow
         var resume = _model.Layers[s + 1];
         TouchInfo.Text =
             $"Touch at X {t.X:0.0}  Y {t.Y:0.0} {(_touchSafe ? "✓ safe" : "✗ not on solid material")}\n" +
-            $"Touch surface: layer {s + 1} (Z {_model.Layers[s].Z:0.00}).  Resume: layer {resume.Index + 1} of {_model.Layers.Count} (Z {resume.Z:0.00}), reprinted from its start.";
+            $"Touch surface: layer {s + 1} (Z {_model.Layers[s].Z:0.00}).  Resume: layer {resume.Index + 1} of {_model.Layers.Count} (Z {resume.Z:0.00}), reprinted from its start." +
+            ZHomeInfo(s);
+    }
+
+    private string ZHomeInfo(int surfaceLayer)
+    {
+        if (_model is null || string.IsNullOrWhiteSpace(_profile.ZHomePrepareTemplate)) return "";
+        var d = PartClearance.DistanceToPart(_model, surfaceLayer, _profile.ZHomeX, _profile.ZHomeY);
+        return d >= ResumeGenerator.MinZHomeClearanceMm
+            ? $"\nBed corner X{_profile.ZHomeX:0} Y{_profile.ZHomeY:0} is {d:0} mm clear of the part: Z may be homed there."
+            : $"\nBed corner X{_profile.ZHomeX:0} Y{_profile.ZHomeY:0} is only {Math.Max(0, d):0.#} mm from the part: Z must not be homed.";
+    }
+
+    /// <summary>Rewrites a previously saved program with the current options (e.g. after switching the Z method).</summary>
+    private async Task<bool> RegenerateAsync(string outPath, bool touchTestOnly)
+    {
+        if (_model is null || _source is null || BuildPlan(requireSafe: true) is not { } built)
+        {
+            Log("Cannot regenerate: analyze the file and choose a touch point first.");
+            return false;
+        }
+        var (plan, profile) = built;
+        var model = _model;
+        var source = _source;
+        var asArchive = outPath.EndsWith(".3mf", StringComparison.OrdinalIgnoreCase) && source.IsArchive;
+        try
+        {
+            await Task.Run(() =>
+            {
+                var r = ResumeGenerator.Generate(model, plan, profile, touchTestOnly);
+                if (asArchive) GcodeSource.WriteArchive(source.FilePath, source.ArchiveEntry!, outPath, r.Lines);
+                else GcodeSource.WriteGcode(outPath, r.Lines);
+            });
+            Log($"Regenerated {Path.GetFileName(outPath)} with the current options.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log("Regeneration failed: " + ex.Message);
+            return false;
+        }
     }
 
     private void RefreshPreview()

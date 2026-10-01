@@ -64,6 +64,19 @@ public interface IPrinterConnection : IAsyncDisposable
 
     /// <summary>Streams camera frames (complete JPEG images) until cancelled.</summary>
     Task StreamCameraAsync(Action<byte[]> onJpegFrame, CancellationToken ct);
+
+    /// <summary>
+    /// True when <paramref name="program"/> sets Z without homing (the part occupies the bed) but the printer is
+    /// not configured to allow it yet. Klipper only accepts SET_KINEMATIC_POSITION with
+    /// <c>[force_move] enable_force_move: True</c>.
+    /// </summary>
+    Task<bool> NeedsZOverrideSetupAsync(IEnumerable<string> program, CancellationToken ct = default);
+
+    /// <summary>False when the printer's configuration cannot be edited remotely (e.g. read-only config root).</summary>
+    Task<bool> CanEnableZOverrideAsync(CancellationToken ct = default);
+
+    /// <summary>Configures the printer so Z can be set without homing (may restart the firmware).</summary>
+    Task EnableZOverrideAsync(IProgress<string>? progress = null, CancellationToken ct = default);
 }
 
 /// <summary>Validated helpers shared by the connection implementations.</summary>

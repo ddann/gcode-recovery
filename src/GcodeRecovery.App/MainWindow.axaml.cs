@@ -96,7 +96,7 @@ public partial class MainWindow : Window
         {
             await LoadStreamFromRecoveryAsync();
             DryRunBox.IsChecked = true;
-            StartStream();
+            await StartStreamAsync();
             _streamer?.Nudge(0.4, -0.2, 0.06);
             Tabs.SelectedIndex = 0;
         }
@@ -185,6 +185,7 @@ public partial class MainWindow : Window
         ProbeTravelMm = Num(TravelBox, 40),
         PurgeLengthMm = Num(PurgeBox, 30),
         TriggerOvertravelMm = Num(OvertravelBox, 0),
+        HomeZAtClearSpot = ZHomeBox.IsChecked == true,
     };
 
     private static double Num(NumericUpDown box, double fallback) => box.Value is { } v ? (double)v : fallback;

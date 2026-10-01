@@ -89,9 +89,11 @@ public static class BuiltInProfiles
         PreferArchiveOutput = false,
         Notes =
             "Klipper-based. The touch-down uses the nozzle-contact probe through PROBE (the same call the U1 " +
-            "firmware uses for bed contact). SET_KINEMATIC_POSITION needs '[force_move] enable_force_move: True' " +
-            "in printer.cfg. The original bed mesh is re-loaded from the 'default' profile. The purge happens in " +
-            "the air over the bed corner farthest from the part; check the position for your setup.",
+            "firmware uses for bed contact). Z is never homed on the part: by default a provisional Z is set with " +
+            "SET_KINEMATIC_POSITION, which needs '[force_move] enable_force_move: True' (the app can add it when the " +
+            "config is writable). Alternatively Z can be homed at the bed corner X10 Y10 when that spot is clear of the " +
+            "part. The original bed mesh is re-loaded from the 'default' profile. The purge happens in the air over the " +
+            "bed corner farthest from the part; check the position for your setup.",
         PrepareTemplate = """
             ; --- Preparation (Snapmaker U1 / Klipper) ---
             ; Requires [force_move] enable_force_move: True  (for SET_KINEMATIC_POSITION)
@@ -106,6 +108,23 @@ public static class BuiltInProfiles
             G1 Z{lift} F600 ; lower the bed a little before any X/Y motion
             G90
             G28 X Y ; home X and Y only. Never home Z: the part occupies the bed
+            TEMPERATURE_WAIT SENSOR=extruder MAXIMUM={probe_nozzle_max_temp}
+            M106 S0
+            """,
+        ZHomeX = 10,
+        ZHomeY = 10,
+        ZHomePrepareTemplate = """
+            ; --- Preparation (Snapmaker U1 / Klipper), Z homed at the bed corner ---
+            ; Used only when X{zhome_x} Y{zhome_y} was verified to be clear of the part. The U1 first drops the bed to its
+            ; bottom endstop, then touches the bed with the nozzle at that corner, so the part is never touched.
+            M140 S{bed_temp} ; keep the part at its printing temperature so it stays attached and true to size
+            M104 S{probe_nozzle_temp} ; nozzle off/cold for the touch-down
+            M106 S255 ; part fan speeds up nozzle cooling
+            M190 S{bed_temp}
+            G90
+            M83
+            G28 ; X/Y, then Z at the bed corner (clear of the part)
+            G1 Z{part_clear_z} F600 ; rise above the part before any X/Y travel
             TEMPERATURE_WAIT SENSOR=extruder MAXIMUM={probe_nozzle_max_temp}
             M106 S0
             """,

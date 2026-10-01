@@ -113,8 +113,18 @@ Command line (handy for testing): `GcodeRecovery file.gcode --height 8.4 [--rang
   the printer screen. The access code is never written to disk.
 * **Snapmaker U1 (Klipper fork).** Touch-down uses the nozzle-contact probe through
   `PROBE SAMPLE_TRIG_FREQ=450 SAMPLES=1` (the call the U1 firmware itself uses for bed contact).
-  `SET_KINEMATIC_POSITION` requires `[force_move] enable_force_move: True` in `printer.cfg`. The mesh is reloaded
-  with `BED_MESH_PROFILE LOAD=default`. Check the purge position for your setup.
+  Klipper refuses Z moves until Z is homed, and Z must never be homed on the part, so there are two ways to give
+  Klipper a Z position. The app checks the printer before streaming or uploading and offers the right one:
+  1. **No Z homing at all (default):** X/Y are homed and a provisional Z is set with `SET_KINEMATIC_POSITION`.
+     Klipper needs `[force_move] enable_force_move: True` for that. When the printer's config is writable over
+     Moonraker, the app backs up `printer.cfg`, adds `[include custom/gcode_recovery.cfg]` and restarts Klipper,
+     after asking you. On a stock U1 the config is read-only (advanced mode changes that); then add the two lines
+     in Fluidd yourself.
+  2. **Z home at the bed corner:** the U1 drops the bed to its bottom endstop and touches the bed at X10 Y10. This is
+     offered only when that corner is at least 8 mm clear of the part (checked from the G-code), and the nozzle rises
+     above the part before travelling to it. You can enable this in Settings.
+
+  The mesh is reloaded with `BED_MESH_PROFILE LOAD=default`. Check the purge position for your setup.
 * **Streaming to Bambu** uses MQTT `gcode_line`, paced by estimated motion time with a ~2 s lookahead, so offsets take
   effect within ~2 s. Moonraker executes each chunk before the next is sent.
 

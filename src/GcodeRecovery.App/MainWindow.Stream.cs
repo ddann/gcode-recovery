@@ -13,6 +13,7 @@ public partial class MainWindow
 {
     private IReadOnlyList<string>? _streamLines;
     private string _streamName = "";
+    private bool _streamFromRecovery;
     private GcodeStreamer? _streamer;
     private CancellationTokenSource? _streamCts;
     private DispatcherTimer? _streamTimer;
@@ -22,7 +23,7 @@ public partial class MainWindow
     {
         StreamRecoveryButton.Click += async (_, _) => await LoadStreamFromRecoveryAsync();
         StreamFileButton.Click += async (_, _) => await LoadStreamFromFileAsync();
-        StreamStartButton.Click += (_, _) => StartStream();
+        StreamStartButton.Click += async (_, _) => await StartStreamAsync();
         StreamPauseButton.Click += (_, _) => _streamer?.Pause();
         StreamPlayButton.Click += (_, _) => _streamer?.Play();
         StreamStopButton.Click += (_, _) => _streamCts?.Cancel();
@@ -74,6 +75,7 @@ public partial class MainWindow
             (ResumeGenerator.Generate(model, built.Plan, built.Profile).Lines, BuildScene(model, built.Plan, built.Profile, layersShown).Ghost));
         _lastGhost = ghost;
         await SetStreamProgramAsync(lines, $"recovery program (resume layer {built.Plan.ResumeLayer.Index + 1})");
+        _streamFromRecovery = true;
     }
 
     private async Task LoadStreamFromFileAsync()
@@ -86,6 +88,7 @@ public partial class MainWindow
         if (files.Count == 0 || files[0].TryGetLocalPath() is not { } path) return;
         var source = await Task.Run(() => GcodeSource.Load(path));
         await SetStreamProgramAsync(source.Lines, Path.GetFileName(path));
+        _streamFromRecovery = false;
     }
 
     private async Task SetStreamProgramAsync(IReadOnlyList<string> lines, string name)
@@ -108,15 +111,29 @@ public partial class MainWindow
         UpcomingBox.Text = string.Join('\n', lines.Where(l => l.Length > 0 && l[0] != ';').Take(40));
     }
 
-    private void StartStream()
+    private async Task StartStreamAsync()
     {
-        if (_streamLines is null) return;
+        if (_streamLines is null || _streamCts is not null) return;
         IGcodeSink sink;
         if (DryRunBox.IsChecked == true) sink = new DryRunSink();
-        else if (_printer is { IsConnected: true } printer) sink = new PrinterSink(printer);
+        else if (_printer is { IsConnected: true } printer)
+        {
+            switch (await EnsureZOverrideAsync(printer, _streamLines))
+            {
+                case ZSetup.Cancel:
+                    return;
+                case ZSetup.SwitchToZHome when _streamFromRecovery:
+                    await LoadStreamFromRecoveryAsync();
+                    break;
+                case ZSetup.SwitchToZHome:
+                    Log("This file sets Z with SET_KINEMATIC_POSITION. Use \"Stream recovery\" so the program can be regenerated with the corner Z home.");
+                    return;
+            }
+            sink = new PrinterSink(printer);
+        }
         else
         {
-            Log("Connect to the printer on the Printer tab (or tick Dry run) before streaming.");
+            Log("Connect to the printer (details in Settings) or tick Dry run before streaming.");
             return;
         }
 

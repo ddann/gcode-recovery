@@ -124,6 +124,11 @@ public sealed class BambuConnection(ConnectionSettings settings) : IPrinterConne
         }
     }
 
+    // Bambu firmware has no user configuration for this; the profile sets Z with G92 after the touch-down.
+    public Task<bool> NeedsZOverrideSetupAsync(IEnumerable<string> program, CancellationToken ct = default) => Task.FromResult(false);
+    public Task EnableZOverrideAsync(IProgress<string>? progress = null, CancellationToken ct = default) => Task.CompletedTask;
+    public Task<bool> CanEnableZOverrideAsync(CancellationToken ct = default) => Task.FromResult(true);
+
     public async ValueTask DisposeAsync() => await DisconnectAsync();
 
     private BambuMQTTClient Client => _mqtt ?? throw new InvalidOperationException("Not connected.");

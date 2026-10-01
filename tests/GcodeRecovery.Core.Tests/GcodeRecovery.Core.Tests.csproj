@@ -11,5 +11,6 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <ProjectReference Include="../../src/GcodeRecovery.Core/GcodeRecovery.Core.csproj" />
+    <ProjectReference Include="../../src/GcodeRecovery.Printers/GcodeRecovery.Printers.csproj" />
   </ItemGroup>
 </Project>

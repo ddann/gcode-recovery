@@ -154,6 +154,19 @@ public partial class MainWindow
             PrinterLog($"Save the {what} on the Recover tab first.");
             return;
         }
+        var printer = _printer;
+        var isText = !path.EndsWith(".3mf", StringComparison.OrdinalIgnoreCase);
+        if (isText)
+        {
+            switch (await EnsureZOverrideAsync(printer, File.ReadLines(path)))
+            {
+                case ZSetup.Cancel:
+                    return;
+                case ZSetup.SwitchToZHome:
+                    if (!await RegenerateAsync(path, touchTestOnly: path == _lastTouchTestPath)) return;
+                    break;
+            }
+        }
         UploadProgress.IsVisible = true;
         UploadProgress.Value = 0;
         await Do($"Upload and start {Path.GetFileName(path)}", p =>
