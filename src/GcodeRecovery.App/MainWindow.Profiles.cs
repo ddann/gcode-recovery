@@ -17,6 +17,8 @@ public partial class MainWindow
         ToolTpl.Text = _profile.ToolSelectTemplate;
         TestEndTpl.Text = _profile.TouchTestEndTemplate;
         ConnTypeBox.SelectedIndex = _profile.Flavor == FirmwareFlavor.Bambu ? 0 : 1;
+        // Bambu's force-probe and homing commands are undocumented: zero Z by hand there unless the user opts in.
+        ZZeroBox.SelectedIndex = _profile.Flavor == FirmwareFlavor.Bambu ? 1 : 0;
         SchedulePreview3D();
     }
 

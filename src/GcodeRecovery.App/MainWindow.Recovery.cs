@@ -180,8 +180,8 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Generates the recovery program and starts it on the connected printer right away: no touch-test run and no
-    /// save dialog. The program itself still touches the part once to set Z; only the separate test run is skipped.
+    /// Generates the recovery program and streams it to the connected printer right away: no touch-test run, no save
+    /// dialog, and live pause/offset/layer control while it runs.
     /// </summary>
     private async Task RunNowAsync()
     {
@@ -191,22 +191,27 @@ public partial class MainWindow
             return;
         }
         if (_model is null || _source is null || BuildPlan(requireSafe: true) is not { } built) return;
-        var (plan, profile) = built;
+        var (plan, _) = built;
+        var manual = ZZeroBox.SelectedIndex == 1;
+        if (manual && _manualZSentAt is null)
+        {
+            Log("Jog the nozzle onto the top of the part and press \"Set Z0 here\" first (Printer panel).");
+            return;
+        }
 
         var ok = await ConfirmDialog.AskAsync(this, "Run recovery now",
-            $"Start the recovery on {printer.Name} now, without a touch test?\n\n" +
-            $"  • the cold nozzle touches the part at X {plan.TouchX:0.0} Y {plan.TouchY:0.0} to set Z (top of layer {plan.SurfaceLayer.Index + 1})\n" +
-            $"  • then purge and wipe, and print from layer {plan.ResumeLayer.Index + 1} of {_model.Layers.Count}\n\n" +
-            "Z is never homed on the part. Stay at the printer for the touch-down.",
+            $"Stream the recovery to {printer.Name} now?\n\n" +
+            (manual
+                ? $"  • starts at the nozzle's current position on the part (Z was set by hand), lifts off first\n"
+                : $"  • the cold nozzle touches the part at X {plan.TouchX:0.0} Y {plan.TouchY:0.0} to set Z (top of layer {plan.SurfaceLayer.Index + 1})\n") +
+            $"  • purge and wipe, then print from layer {plan.ResumeLayer.Index + 1} of {_model.Layers.Count}\n\n" +
+            "You can Pause, Stop, correct X/Y/Z or jump layers while it runs. Stay at the printer.",
             "Start recovery");
         if (!ok) return;
 
-        var dir = Path.Combine(AppSettings.DataDirectory, "jobs");
-        Directory.CreateDirectory(dir);
-        var path = Path.Combine(dir, OutputFileName(plan, profile, touchTestOnly: false));
-        if (!await RegenerateAsync(path, touchTestOnly: false)) return;
-        _lastRecoveryPath = path;
-        await UploadAndStart(path, "recovery program");
+        await LoadStreamFromRecoveryAsync();
+        DryRunBox.IsChecked = false;
+        await StartStreamAsync();
     }
 
     private async Task SaveAsync(bool touchTestOnly)

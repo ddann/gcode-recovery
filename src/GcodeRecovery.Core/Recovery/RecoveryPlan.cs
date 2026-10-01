@@ -43,6 +43,21 @@ public sealed record RecoveryOptions
     /// Only allowed when that spot is clear of the part (see <see cref="PartClearance"/>).
     /// </summary>
     public bool HomeZAtClearSpot { get; init; }
+
+    /// <summary>How Z zero is found. Manual: the user jogs the nozzle onto the part and sets Z before starting.</summary>
+    public ZZeroMethod ZZero { get; init; } = ZZeroMethod.Probe;
+}
+
+public enum ZZeroMethod
+{
+    /// <summary>The program lowers the cold nozzle onto the part with the printer's force sensor.</summary>
+    Probe,
+
+    /// <summary>
+    /// Z was set by hand before the program starts (nozzle touching the part, then G92 Z = contact height).
+    /// The program does no homing and no probing at all; it starts by lifting off the part.
+    /// </summary>
+    Manual,
 }
 
 /// <summary>Distance checks between a bed position and everything printed so far.</summary>

@@ -117,6 +117,7 @@ public partial class MainWindow
     private async Task StartStreamAsync()
     {
         if (_streamLines is null || _streamCts is not null) return;
+        if (DryRunBox.IsChecked != true && !ManualZReady()) return;
         IGcodeSink sink;
         if (DryRunBox.IsChecked == true) sink = new DryRunSink();
         else if (_printer is { IsConnected: true } printer)

@@ -89,11 +89,11 @@
                 <StackPanel Spacing="6">
                   <TextBlock Classes="h2" Text="4  Run" />
                   <Grid ColumnDefinitions="*,*" ColumnSpacing="6" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
-                    <Button Grid.Row="2" Grid.ColumnSpan="2" x:Name="RunNowButton" Content="Run recovery now (skip touch test)" Classes="accent grid" IsEnabled="False" />
+                    <Button Grid.Row="2" Grid.ColumnSpan="2" x:Name="RunNowButton" Content="Run recovery now (stream, skip touch test)" Classes="accent grid" IsEnabled="False" />
                     <Button x:Name="TouchTestButton" Content="Save touch test…" Classes="grid" IsEnabled="False" />
                     <Button Grid.Column="1" x:Name="GenerateButton" Content="Save recovery file…" Classes="accent grid" IsEnabled="False" />
-                    <Button Grid.Row="1" x:Name="UploadTestButton" Content="Upload &amp; run test" Classes="grid" />
-                    <Button Grid.Row="1" Grid.Column="1" x:Name="UploadRecoveryButton" Content="Upload &amp; start" Classes="grid" />
+                    <Button Grid.Row="1" x:Name="UploadTestButton" Content="Upload &amp; run test" Classes="grid" IsVisible="False" />
+                    <Button Grid.Row="1" Grid.Column="1" x:Name="UploadRecoveryButton" Content="Upload &amp; start" Classes="grid" IsVisible="False" />
                   </Grid>
                   <ProgressBar x:Name="UploadProgress" Minimum="0" Maximum="100" Height="5" IsVisible="False" />
                   <TextBlock Classes="hint" Text="…or stream it from this computer with live correction (right)." />
@@ -227,6 +227,7 @@
                     <Button Grid.Column="5" x:Name="ZPlus" Content="Z+" Classes="grid" />
                   </Grid>
                   <TextBlock Classes="hint" Text="Never home Z with the part on the bed. +Z lowers the bed (P1S, U1)." />
+                  <Button x:Name="SetZ0Button" Content="Set Z0 here (nozzle touching the part)" Classes="grid" />
                   <Grid ColumnDefinitions="70,*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="6">
                     <TextBlock VerticalAlignment="Center" Text="Nozzle °C" />
                     <NumericUpDown Grid.Column="1" x:Name="NozzleSetBox" Minimum="0" Maximum="300" Increment="5" Value="0" FormatString="0" />
@@ -276,9 +277,14 @@
             <TextBlock Classes="hint" Text="Bambu: enable LAN mode (and LAN-only liveview for the camera); IP, serial and access code are on the printer screen. The access code is never saved to disk." />
 
             <TextBlock Classes="h2" Text="Recovery options" />
-            <Grid ColumnDefinitions="170,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
-              <TextBlock VerticalAlignment="Center" Text="Z reference" />
-              <ComboBox Grid.Column="1" x:Name="FrameBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+            <Grid ColumnDefinitions="170,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
+              <TextBlock VerticalAlignment="Center" Text="Z zero" />
+              <ComboBox Grid.Column="1" x:Name="ZZeroBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+                <ComboBoxItem Content="Load-cell touch-down (automatic)" />
+                <ComboBoxItem Content="Manual: jog onto the part, press Set Z0 here" />
+              </ComboBox>
+              <TextBlock Grid.Row="9" VerticalAlignment="Center" Text="Z reference" />
+              <ComboBox Grid.Row="9" Grid.Column="1" x:Name="FrameBox" HorizontalAlignment="Stretch" SelectedIndex="0">
                 <ComboBoxItem Content="Contact = Z0, shift remaining G-code" />
                 <ComboBoxItem Content="Keep original Z values" />
               </ComboBox>

@@ -11,6 +11,16 @@ internal static class HelpContent
         • If the printer was switched off, jog the bed so the nozzle is roughly 5–20 mm above the part (use the Printer tab or the printer screen).
         • Keep the bed warm (same temperature as the print) so the part stays attached.
 
+        BAMBU LAB P1S: STREAMING WITH MANUAL Z ZERO (default)
+        • Load the ORIGINAL G-code (not a file made by Gcode Recovery) and analyze it.
+        • Workspace → Printer: jog the nozzle onto the top of the part (+Z lowers the bed). Use 1 mm steps, then 0.1 mm;
+          stop when a sheet of paper just drags. Press "Set Z0 here".
+        • Press "Run recovery now (stream…)". It lifts off the part, purges and wipes at the chute, travels to the resume
+          point and prints. Pause, offsets and layer jumps work while it runs. Nothing is homed or probed.
+        • The printer must still know its X/Y position (not switched off since the failure). Avoid Home X/Y with a part on
+          the bed: Bambu's G28 may home Z at the bed centre.
+        • Control needs LAN Only Mode + Developer Mode on the printer.
+
         RECOVER TAB
         1. Open the exact G-code (or Bambu .gcode.3mf) that was printed.
         2. Measure the part height from the bed to the top surface with calipers or a ruler and enter it. ±0.5 mm is fine.

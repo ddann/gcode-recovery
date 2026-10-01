@@ -122,6 +122,8 @@ public static partial class LayerParser
             PrinterModel = printerModel,
             LayerDetection = useMarkers ? "Marker" : "Z",
             HeaderLineCount = CountHeaderLines(lines),
+            IsRecoveryProgram = lines.Take(5000).Any(l => l.StartsWith("; Gcode Recovery: resume program", StringComparison.Ordinal)
+                                                     || l.StartsWith("; Gcode Recovery: TOUCH TEST", StringComparison.Ordinal)),
         };
     }
 

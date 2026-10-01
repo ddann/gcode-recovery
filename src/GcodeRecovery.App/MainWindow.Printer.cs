@@ -28,7 +28,17 @@ public partial class MainWindow
         StopButton.Click += async (_, _) => await Do("Stop", p => p.StopAsync());
         LightOnButton.Click += async (_, _) => await Do("Light on", p => p.SetLightAsync(true));
         LightOffButton.Click += async (_, _) => await Do("Light off", p => p.SetLightAsync(false));
-        HomeXYButton.Click += async (_, _) => await Send("G28 X Y");
+        HomeXYButton.Click += async (_, _) =>
+        {
+            if (IsBambuConnection && !await ConfirmDialog.AskAsync(this, "Home X/Y on a Bambu printer",
+                    "Bambu does not document whether 'G28 X Y' homes only X and Y. If the firmware also homes Z, the bed rises " +
+                    "until the nozzle touches it at the bed centre, which crashes into a part standing there.\n\n" +
+                    "Only continue if the bed centre is clear, or if the printer still knows its X/Y position anyway " +
+                    "(it was not switched off since the failed print, then homing is not needed).",
+                    "Home X/Y anyway", "Cancel"))
+                return;
+            await Send("G28 X Y");
+        };
 
         XMinus.Click += async (_, _) => await Jog(Axis.X, -1);
         XPlus.Click += async (_, _) => await Jog(Axis.X, 1);

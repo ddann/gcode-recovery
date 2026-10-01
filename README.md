@@ -135,6 +135,10 @@ Command line (handy for testing): `GcodeRecovery file.gcode --height 8.4 [--rang
 
 ### Printer notes
 
+* **Bambu Lab P1S: manual Z zero + streaming (default).** Jog the nozzle onto the part, press **Set Z0 here**, then
+  **Run recovery now**: the program is streamed from the computer, lifts off the part first and never homes or probes.
+  Upload & start is disabled in the workspace. The automatic force-sensor touch-down below remains available in Settings
+  but is unverified on current firmware.
 * **Bambu Lab P1S (experimental).** Bambu does not document its G-code. The touch-down uses `G380 S2` (move until
   the bed force sensors detect contact), as found in Bambu's own P1S start G-code. The stored mesh is used (no
   `G29`). Enable **LAN mode** (and LAN-only liveview for the camera); the IP, serial number and access code are on

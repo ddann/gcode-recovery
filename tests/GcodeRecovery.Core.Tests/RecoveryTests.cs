@@ -289,3 +289,35 @@ public class NozzleCleanerTests
         Assert.DoesNotContain(code, l => l.StartsWith("G1 E0.5 F1800"));
     }
 }
+
+public class ManualZAndInputGuardTests
+{
+    [Fact]
+    public void Generated_programs_are_recognised_so_they_cannot_be_recovered_again()
+    {
+        var model = LayerParser.Parse(SyntheticGcode.SolidBlock(layers: 40));
+        Assert.False(model.IsRecoveryProgram);
+        var plan = RecoveryPlan.Create(model, 20, 110, 110, new RecoveryOptions());
+        var output = ResumeGenerator.Generate(model, plan, BuiltInProfiles.BambuP1S()).Lines;
+        Assert.True(LayerParser.Parse(output).IsRecoveryProgram);
+    }
+
+    [Fact]
+    public void Manual_z_program_never_homes_or_probes_and_lifts_first()
+    {
+        var model = LayerParser.Parse(SyntheticGcode.SolidBlock(layers: 40));
+        var plan = RecoveryPlan.Create(model, 20, 110, 110, new RecoveryOptions { ZZero = ZZeroMethod.Manual });
+        var lines = ResumeGenerator.Generate(model, plan, BuiltInProfiles.BambuP1S()).Lines;
+        var code = lines.Select(l => l.Split(';')[0].Trim()).Where(l => l.Length > 0).ToList();
+        var original = code.Count - ResumeGenerator.RemapZ(model, plan).Count(l => l.Split(';')[0].Trim().Length > 0);
+        var preamble = code.Take(original).ToList();
+
+        Assert.DoesNotContain(preamble, l => l.StartsWith("G28") || l.StartsWith("G380") || l.StartsWith("PROBE")
+                                             || l.StartsWith("G92 Z") || l.StartsWith("G29") || l.StartsWith("SET_KINEMATIC"));
+        var firstMove = preamble.FindIndex(l => l.StartsWith("G1 ") || l.StartsWith("G0 "));
+        Assert.Equal("G91", preamble[firstMove - 1]);
+        Assert.Equal("G1 Z5 F600", preamble[firstMove]); // relative lift off the part before anything else moves
+        Assert.Contains("G1 Y265 F3000", preamble);      // then the Bambu chute purge/wipe
+        Assert.Throws<InvalidOperationException>(() => ResumeGenerator.Generate(model, plan, BuiltInProfiles.BambuP1S(), touchTestOnly: true));
+    }
+}
