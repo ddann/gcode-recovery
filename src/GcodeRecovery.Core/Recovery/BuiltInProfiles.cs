@@ -92,8 +92,8 @@ public static class BuiltInProfiles
             "firmware uses for bed contact). Z is never homed on the part: by default a provisional Z is set with " +
             "SET_KINEMATIC_POSITION, which needs '[force_move] enable_force_move: True' (the app can add it when the " +
             "config is writable). Alternatively Z can be homed at the bed corner X10 Y10 when that spot is clear of the " +
-            "part. The original bed mesh is re-loaded from the 'default' profile. The purge happens in the air over the " +
-            "bed corner farthest from the part; check the position for your setup.",
+            "part. The original bed mesh is re-loaded from the 'default' profile. Purging and wiping use the " +
+            "U1's own nozzle cleaner (purge, cut-off, brush, discard) and printing starts right after it.",
         PrepareTemplate = """
             ; --- Preparation (Snapmaker U1 / Klipper) ---
             ; Requires [force_move] enable_force_move: True  (for SET_KINEMATIC_POSITION)
@@ -140,20 +140,16 @@ public static class BuiltInProfiles
             G92 Z{contact_z} ; the contact point becomes the new Z reference
             G1 Z{safe_z} F600 ; back off
             """,
+        PrimeAfterPurgeMm = 0.5,
         PurgeTemplate = """
-            ; --- Heat, purge and wipe away from the part ---
-            G1 Z{safe_z} F600
-            G1 X{purge_x} Y{purge_y} F{travel_feed}
-            M109 S{nozzle_temp}
-            G92 E0
-            G1 E{purge_length} F150 ; purge
-            G4 S2
-            G91
-            G1 X{wipe_dx} F12000 ; flick the purged strand off
-            G1 X{wipe_dx_back}
-            G1 X{wipe_dx}
-            G1 X{wipe_dx_back}
+            ; --- Heat, purge and clean the nozzle with the U1's own cleaner ---
+            ; INNER_PREEXTRUDE_FILAMENT is the firmware's purge routine: it moves (X/Y only) to the discard station,
+            ; heats, purges, retracts {prime_length} mm, cools the strand, cuts it off, brushes the nozzle and discards
+            ; the strand. Z is never moved, so it runs safely at the height above the part.
             G90
+            G1 Z{safe_z} F600 ; stay above the part
+            INNER_PREEXTRUDE_FILAMENT TEMP={nozzle_temp} LENGTH={purge_length} RETRACT_LENGTH={prime_length}
+            M109 S{nozzle_temp} ; make sure the nozzle is at printing temperature
             """,
         ToolSelectTemplate = "T{tool}",
         TouchTestEndTemplate = """

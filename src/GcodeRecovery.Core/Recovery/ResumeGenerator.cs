@@ -73,7 +73,7 @@ public static class ResumeGenerator
         }
 
         Append(output, profile.PurgeTemplate, values, unknown);
-        AppendRestore(output, plan, state);
+        AppendRestore(output, plan, state, profile.PrimeAfterPurgeMm);
 
         var kept = 0;
         foreach (var line in RemapZ(model, plan))
@@ -100,17 +100,22 @@ public static class ResumeGenerator
         output.AddRange(TemplateEngine.Render(template, values, unknown));
     }
 
-    private static void AppendRestore(List<string> output, RecoveryPlan plan, MachineState state)
+    private static void AppendRestore(List<string> output, RecoveryPlan plan, MachineState state, double primeMm)
     {
-        output.Add("; --- Restore print state at the start of the resume layer ---");
+        output.Add("; --- Straight from the freshly wiped nozzle to the resume point, then print ---");
         foreach (var fan in state.Fans.OrderBy(f => f.Key).Select(f => f.Value)) output.Add(fan);
         // G90 first: on Marlin-style firmware G90 also resets the extruder to absolute mode.
         output.Add("G90");
+        output.Add($"G1 Z{F(plan.SafeZ)} F600");
+        output.Add($"G1 X{F(state.X)} Y{F(state.Y)} F{F(Math.Max(plan.Options.TravelFeed, 12000))}");
+        output.Add($"G1 Z{F(plan.ResumeZ)} F600");
+        if (primeMm > 0)
+        {
+            output.Add("M83");
+            output.Add($"G1 E{primeMm.ToString("0.###", CultureInfo.InvariantCulture)} F1800 ; re-prime what the cleaner retracted");
+        }
         output.Add(state.AbsoluteE ? "M82" : "M83");
         output.Add(state.AbsoluteE ? $"G92 E{state.E.ToString("0.#####", CultureInfo.InvariantCulture)}" : "G92 E0");
-        output.Add($"G1 Z{F(plan.SafeZ)} F600");
-        output.Add($"G1 X{F(state.X)} Y{F(state.Y)} F{F(plan.Options.TravelFeed)}");
-        output.Add($"G1 Z{F(plan.ResumeZ)} F600");
         output.Add($"G1 F{F(state.Feedrate)}");
         if (!state.AbsoluteXyz) output.Add("G91");
         output.Add($"; --- Original G-code from layer {plan.ResumeLayer.Index + 1} ---");
@@ -174,6 +179,7 @@ public static class ResumeGenerator
             ["wipe_dx"] = F(wipe),
             ["wipe_dx_back"] = F(-wipe),
             ["purge_length"] = F(o.PurgeLengthMm),
+            ["prime_length"] = F(profile.PrimeAfterPurgeMm),
             ["tool"] = Math.Max(0, state.Tool).ToString(CultureInfo.InvariantCulture),
             ["layer"] = (plan.ResumeLayer.Index + 1).ToString(CultureInfo.InvariantCulture),
         };

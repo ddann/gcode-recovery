@@ -42,6 +42,12 @@ public sealed class PrinterProfile
     /// <summary>Heats the nozzle away from the part, purges and wipes it.</summary>
     public string PurgeTemplate { get; set; } = "";
 
+    /// <summary>
+    /// Filament the purge routine leaves retracted (e.g. the U1 cleaner retracts before cutting the strand).
+    /// It is pushed back right at the resume point, so printing starts from a primed, freshly wiped nozzle.
+    /// </summary>
+    public double PrimeAfterPurgeMm { get; set; }
+
     /// <summary>Selects a tool. Empty to skip (e.g. AMS slot handled manually).</summary>
     public string ToolSelectTemplate { get; set; } = "";
 

@@ -97,10 +97,10 @@ public class ResumeGeneratorTests
             var (_, _, result) = Run(profile);
             var probe = result.Lines.FindIndex(l => l.StartsWith("G380") || l.StartsWith("PROBE "));
             var coldCmd = result.Lines.FindIndex(l => l.StartsWith("M104 S0"));
-            var heat = result.Lines.FindIndex(l => l.StartsWith("M109 S220"));
-            var purge = result.Lines.FindIndex(l => l.StartsWith("G1 E30"));
+            var heat = result.Lines.FindIndex(l => l.StartsWith("M109 S220") || l.StartsWith("INNER_PREEXTRUDE_FILAMENT TEMP=220"));
+            var purge = result.Lines.FindIndex(l => l.StartsWith("G1 E30") || l.StartsWith("INNER_PREEXTRUDE_FILAMENT"));
             Assert.True(coldCmd >= 0 && coldCmd < probe, profile.Name);
-            Assert.True(probe < heat && heat < purge, profile.Name);
+            Assert.True(probe < heat && heat <= purge, profile.Name);
             var setZ = result.Lines.Skip(probe).First(l => l.StartsWith("G92 Z"));
             Assert.Equal("G92 Z0", setZ.Split(';')[0].Trim());
         }
@@ -122,7 +122,7 @@ public class ResumeGeneratorTests
     {
         var (_, plan, result) = Run(BuiltInProfiles.SnapmakerU1(), absoluteE: true);
         var expected = "G92 E" + plan.ResumeLayer.StateAtStart.E.ToString("0.#####", CultureInfo.InvariantCulture);
-        var restore = result.Lines.FindIndex(l => l.StartsWith("; --- Restore"));
+        var restore = result.Lines.FindIndex(l => l.StartsWith("; --- Straight from"));
         Assert.Contains(expected, result.Lines.Skip(restore));
         Assert.Contains("M82", result.Lines.Skip(restore));
     }
@@ -222,7 +222,7 @@ public class RestoreOrderTests
         var model = LayerParser.Parse(SyntheticGcode.SolidBlock(layers: 20));
         var plan = RecoveryPlan.Create(model, 10, 110, 110, new RecoveryOptions());
         var lines = ResumeGenerator.Generate(model, plan, BuiltInProfiles.BambuP1S()).Lines;
-        var restore = lines.FindIndex(l => l.StartsWith("; --- Restore"));
+        var restore = lines.FindIndex(l => l.StartsWith("; --- Straight from"));
         var g90 = lines.FindIndex(restore, l => l == "G90");
         var m83 = lines.FindIndex(restore, l => l == "M83");
         Assert.True(g90 > restore && g90 < m83);
@@ -251,5 +251,41 @@ public class FilamentSavingsTests
         var model = LayerParser.Parse(lines);
         Assert.Equal(2.85, model.FilamentDiameter);
         Assert.Equal(1.27, model.FilamentDensity);
+    }
+}
+
+
+public class NozzleCleanerTests
+{
+    [Fact]
+    public void U1_uses_its_own_cleaner_and_prints_right_after_the_wipe()
+    {
+        var model = LayerParser.Parse(SyntheticGcode.SolidBlock(layers: 50));
+        var plan = RecoveryPlan.Create(model, 29, 110, 110, new RecoveryOptions());
+        var lines = ResumeGenerator.Generate(model, plan, BuiltInProfiles.SnapmakerU1()).Lines;
+        var code = lines.Select(l => l.Split(';')[0].Trim()).ToList();
+
+        var cleaner = code.FindIndex(l => l == "INNER_PREEXTRUDE_FILAMENT TEMP=220 LENGTH=30 RETRACT_LENGTH=0.5");
+        Assert.True(cleaner > 0);
+        Assert.DoesNotContain(code, l => l.StartsWith("G1 E30")); // no free purge above the plate
+        Assert.True(code.FindLastIndex(cleaner, l => l.StartsWith("G1 Z")) > code.FindIndex(l => l.StartsWith("PROBE")));
+
+        var original = lines.FindIndex(l => l.StartsWith("; --- Original G-code"));
+        var between = code.Skip(cleaner + 1).Take(original - cleaner - 1).Where(l => l.Length > 0).ToList();
+        Assert.DoesNotContain(between, l => l.StartsWith("G4") || l.StartsWith("M400")); // no delay after the wipe
+        var lower = between.FindIndex(l => l == "G1 Z0.2 F600");
+        var prime = between.FindIndex(l => l == "G1 E0.5 F1800");
+        Assert.True(lower >= 0 && prime == lower + 2 && between[lower + 1] == "M83"); // prime at the resume point
+        Assert.True(between.FindIndex(l => l.StartsWith("G1 X")) < lower); // travel before lowering
+    }
+
+    [Fact]
+    public void Bambu_keeps_its_chute_purge_without_extra_prime()
+    {
+        var model = LayerParser.Parse(SyntheticGcode.SolidBlock(layers: 50));
+        var plan = RecoveryPlan.Create(model, 29, 110, 110, new RecoveryOptions());
+        var code = ResumeGenerator.Generate(model, plan, BuiltInProfiles.BambuP1S()).Lines.Select(l => l.Split(';')[0].Trim()).ToList();
+        Assert.Contains("G1 Y265 F3000", code);
+        Assert.DoesNotContain(code, l => l.StartsWith("G1 E0.5 F1800"));
     }
 }
