@@ -137,6 +137,10 @@ Command line (handy for testing): `GcodeRecovery file.gcode --height 8.4 [--rang
   the bed force sensors detect contact), as found in Bambu's own P1S start G-code. The stored mesh is used (no
   `G29`). Enable **LAN mode** (and LAN-only liveview for the camera); the IP, serial number and access code are on
   the printer screen. The access code is never written to disk.
+  **Firmware from 2025 on (Authorization Control):** status and camera work over LAN, but the printer rejects control
+  commands that are not signed by Bambu's own software (error 84033543). To pause/resume/jog/start jobs from Gcode
+  Recovery, enable **LAN Only Mode** and then **Developer Mode** on the printer. The app shows the printer's
+  rejection with this hint instead of failing silently. Gcode Recovery does not try to bypass this check.
 * **Snapmaker U1 (Klipper fork).** Touch-down uses the nozzle-contact probe through
   `PROBE SAMPLE_TRIG_FREQ=450 SAMPLES=1` (the call the U1 firmware itself uses for bed contact).
   Klipper refuses Z moves until Z is homed, and Z must never be homed on the part, so there are two ways to give

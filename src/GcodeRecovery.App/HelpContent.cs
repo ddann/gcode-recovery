@@ -39,7 +39,9 @@ internal static class HelpContent
         PRINTER TAB
         Connect to the printer on your local network to watch the camera, follow temperatures and progress, jog, set
         temperatures, pause/resume/stop, send G-code, and upload + start the touch test or the recovery file.
-        Bambu Lab: enable LAN mode (or LAN-only liveview for the camera) and enter the printer IP, serial number and access code.
+        Bambu Lab: enter the printer IP, serial number and access code. Status and camera work as they are; to control the
+        printer (pause, jog, temperatures, upload & start) firmware from 2025 on needs LAN Only Mode + Developer Mode, otherwise
+        the printer rejects the commands (the log shows "error 84033543").
         Snapmaker U1 / Klipper: enter the printer IP (Moonraker on port 7125). Klipper refuses Z moves before Z is homed.
         The app never homes Z on the part: it either sets Z without homing (needs [force_move] enable_force_move: True,
         which the app can add when the config is writable) or, if you agree, homes Z at the bed corner X10 Y10, but only

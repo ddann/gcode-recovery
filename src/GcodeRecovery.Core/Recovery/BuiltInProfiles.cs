@@ -20,7 +20,8 @@ public static class BuiltInProfiles
             "EXPERIMENTAL. Bambu Lab does not document its G-code dialect. The touch-down uses G380 S2 " +
             "(move until the heatbed force sensors detect contact), as seen in Bambu's own P1S start G-code. " +
             "The bed mesh is not re-measured: the firmware keeps the mesh saved (M500) by the original print. " +
-            "Run the touch-test file first and keep a hand near the power switch.",
+            "Run the touch-test file first and keep a hand near the power switch. Live control (pause, jog, upload & start) " +
+            "needs LAN Only Mode + Developer Mode on 2025+ firmware; otherwise the printer rejects commands (error 84033543).",
         PrepareTemplate = """
             ; --- Preparation (Bambu Lab P1S) ---
             M140 S{bed_temp} ; keep the part at its printing temperature so it stays attached and true to size

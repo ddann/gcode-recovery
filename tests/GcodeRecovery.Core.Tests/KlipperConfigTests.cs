@@ -89,3 +89,28 @@ public class ZHomeAtClearSpotTests
         Assert.Throws<InvalidOperationException>(() => ResumeGenerator.Generate(model, plan, BuiltInProfiles.SnapmakerU1()));
     }
 }
+
+public class BambuReplyTests
+{
+    [Fact]
+    public void Authorization_rejection_is_explained()
+    {
+        var reply = System.Text.Json.Nodes.JsonNode.Parse("""
+            {"print":{"command":"gcode_line","sequence_id":"0","result":"failed","reason":"mqtt message verify failed","err_code":84033543}}
+            """)!.AsObject();
+        var text = BambuConnection.DescribeRejection(reply);
+        Assert.NotNull(text);
+        Assert.Contains("gcode_line", text);
+        Assert.Contains("84033543", text);
+        Assert.Contains("Developer Mode", text);
+    }
+
+    [Fact]
+    public void Normal_reports_are_not_errors()
+    {
+        var report = System.Text.Json.Nodes.JsonNode.Parse("""{"print":{"command":"push_status","nozzle_temper":210.0,"gcode_state":"RUNNING"}}""")!.AsObject();
+        Assert.Null(BambuConnection.DescribeRejection(report));
+        var ok = System.Text.Json.Nodes.JsonNode.Parse("""{"print":{"command":"pause","result":"success"}}""")!.AsObject();
+        Assert.Null(BambuConnection.DescribeRejection(ok));
+    }
+}

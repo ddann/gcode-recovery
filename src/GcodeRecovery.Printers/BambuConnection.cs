@@ -142,7 +142,9 @@ public sealed class BambuConnection(ConnectionSettings settings) : IPrinterConne
     {
         try
         {
-            if (JsonNode.Parse(payload) is not JsonObject root || root["print"] is not JsonObject print) return;
+            if (JsonNode.Parse(payload) is not JsonObject root) return;
+            if (DescribeRejection(root) is { } rejection) Log?.Invoke(this, rejection);
+            if (root["print"] is not JsonObject print) return;
             // P1-series printers send incremental reports: merge into the last known state.
             foreach (var (key, value) in print) _print[key] = value?.DeepClone();
             Status = new PrinterStatus
@@ -166,6 +168,37 @@ public sealed class BambuConnection(ConnectionSettings settings) : IPrinterConne
         {
             Log?.Invoke(this, "Unreadable report: " + ex.Message);
         }
+    }
+
+    /// <summary>Firmware error for commands that are not signed by Bambu software (Authorization Control, 2025+).</summary>
+    public const long AuthorizationRejected = 84033543;
+
+    /// <summary>
+    /// Bambu answers every command on the report topic. Turns a failed answer into a readable message, with the
+    /// remedy for Authorization Control rejections. Returns null for normal reports.
+    /// </summary>
+    public static string? DescribeRejection(JsonObject root)
+    {
+        foreach (var (section, node) in root)
+        {
+            if (node is not JsonObject obj) continue;
+            var result = obj["result"] is JsonValue r && r.TryGetValue<string>(out var rs) ? rs : null;
+            long errCode = 0;
+            if (obj["err_code"] is JsonValue e)
+                errCode = e.TryGetValue<long>(out var l) ? l : e.TryGetValue<string>(out var es) && long.TryParse(es, out l) ? l : 0;
+            var failed = result is not null && result.StartsWith("fail", StringComparison.OrdinalIgnoreCase);
+            if (!failed && errCode == 0) continue;
+
+            var command = obj["command"] is JsonValue c && c.TryGetValue<string>(out var cs) ? cs : section;
+            var reason = obj["reason"] is JsonValue rv && rv.TryGetValue<string>(out var rss) && rss.Length > 0 ? rss : null;
+            var message = $"Printer rejected '{command}'" + (reason is null ? "" : $": {reason}") + (errCode != 0 ? $" (error {errCode})" : "") + ".";
+            if (errCode == AuthorizationRejected || (reason ?? "").Contains("verify", StringComparison.OrdinalIgnoreCase))
+                message += " The printer's Authorization Control only accepts control commands from Bambu's own software. " +
+                           "To control it from Gcode Recovery, enable LAN Only Mode and then Developer Mode on the printer " +
+                           "(printer screen: Settings → General / Network). Status and camera keep working without it.";
+            return message;
+        }
+        return null;
     }
 
     private string? Str(string key) => _print[key] is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
