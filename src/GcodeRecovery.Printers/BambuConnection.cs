@@ -58,7 +58,7 @@ public sealed class BambuConnection(ConnectionSettings settings) : IPrinterConne
         var gcode = string.Join("\n", lines.Select(PrinterCommands.Sanitize)) + "\n";
         return Publish(new JsonObject
         {
-            ["print"] = new JsonObject { ["sequence_id"] = "0", ["command"] = "gcode_line", ["param"] = gcode },
+            ["print"] = new JsonObject { ["sequence_id"] = NextSequence(), ["command"] = "gcode_line", ["param"] = gcode },
         });
     }
 
@@ -82,19 +82,40 @@ public sealed class BambuConnection(ConnectionSettings settings) : IPrinterConne
         }
         Log?.Invoke(this, $"Uploaded {fileName}.");
 
-        JsonObject command = fileName.EndsWith(".3mf", StringComparison.OrdinalIgnoreCase)
-            ? new JsonObject
+        // Where the SD card is mounted differs between models/firmware (P1: /mnt/sdcard, X1: /sdcard), so each
+        // candidate is tried until the printer accepts one. The printer answers every command on the report topic.
+        var is3mf = fileName.EndsWith(".3mf", StringComparison.OrdinalIgnoreCase);
+        foreach (var location in StartLocations(fileName, is3mf))
+        {
+            var command = is3mf
+                ? new JsonObject
+                {
+                    ["sequence_id"] = NextSequence(), ["command"] = "project_file", ["param"] = "Metadata/plate_1.gcode",
+                    ["url"] = location, ["subtask_name"] = Path.GetFileNameWithoutExtension(fileName),
+                    ["project_id"] = "0", ["profile_id"] = "0", ["task_id"] = "0", ["subtask_id"] = "0",
+                    ["md5"] = "", ["timelapse"] = false, ["bed_type"] = "auto",
+                    ["bed_levelling"] = false, // never re-level: the part is on the bed
+                    ["flow_cali"] = false, ["vibration_cali"] = false, ["layer_inspect"] = false, ["use_ams"] = false,
+                }
+                : new JsonObject { ["sequence_id"] = NextSequence(), ["command"] = "gcode_file", ["param"] = location };
+
+            var reply = AwaitReply(command["command"]!.GetValue<string>(), ct);
+            await Publish(new JsonObject { ["print"] = command });
+            var answer = await reply;
+            if (answer is null)
             {
-                ["sequence_id"] = "0", ["command"] = "project_file", ["param"] = "Metadata/plate_1.gcode",
-                ["url"] = "file:///sdcard/" + fileName, ["subtask_name"] = fileName,
-                ["project_id"] = "0", ["profile_id"] = "0", ["task_id"] = "0", ["subtask_id"] = "0",
-                ["md5"] = "", ["timelapse"] = false, ["bed_type"] = "auto",
-                ["bed_levelling"] = false, // never re-level: the part is on the bed
-                ["flow_cali"] = false, ["vibration_cali"] = false, ["layer_inspect"] = false, ["use_ams"] = false,
+                Log?.Invoke(this, $"Start command sent ({location}); no reply from the printer yet, watch its status.");
+                return;
             }
-            : new JsonObject { ["sequence_id"] = "0", ["command"] = "gcode_file", ["param"] = "/sdcard/" + fileName };
-        await Publish(new JsonObject { ["print"] = command });
-        Log?.Invoke(this, $"Start command sent for {fileName}.");
+            if (!IsFailure(answer))
+            {
+                Log?.Invoke(this, $"Printer accepted the job ({location}).");
+                return;
+            }
+            Log?.Invoke(this, $"Printer refused {location}, trying the next location…");
+        }
+        throw new IOException($"The printer refused to start {fileName} from every known SD-card location. " +
+                              "Check that an SD card is inserted and that LAN Only Mode + Developer Mode are on.");
     }
 
     public async Task StreamCameraAsync(Action<byte[]> onJpegFrame, CancellationToken ct)
@@ -133,6 +154,30 @@ public sealed class BambuConnection(ConnectionSettings settings) : IPrinterConne
 
     private BambuMQTTClient Client => _mqtt ?? throw new InvalidOperationException("Not connected.");
 
+    private int _sequence;
+    private readonly object _replyGate = new();
+    private (string Command, TaskCompletionSource<JsonObject?> Reply)? _pendingReply;
+
+    private string NextSequence() => Interlocked.Increment(ref _sequence).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>Paths/URLs to try, most likely first, for a file uploaded to the SD-card root.</summary>
+    public static IReadOnlyList<string> StartLocations(string fileName, bool is3mf) => is3mf
+        ? ["file:///mnt/sdcard/" + fileName, "file:///sdcard/" + fileName, "ftp://" + fileName]
+        : ["/mnt/sdcard/" + fileName, "/sdcard/" + fileName];
+
+    private static bool IsFailure(JsonObject reply) =>
+        reply["result"] is JsonValue r && r.TryGetValue<string>(out var s) && s.StartsWith("fail", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Waits (max 8 s) for the printer's answer to <paramref name="command"/>; null when none arrives.</summary>
+    private async Task<JsonObject?> AwaitReply(string command, CancellationToken ct)
+    {
+        var tcs = new TaskCompletionSource<JsonObject?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        lock (_replyGate) _pendingReply = (command, tcs);
+        var winner = await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(8), ct));
+        lock (_replyGate) _pendingReply = null;
+        return winner == tcs.Task ? tcs.Task.Result : null;
+    }
+
     private async Task Publish(JsonObject payload)
     {
         if (!await Client.Publish(payload.ToJsonString())) throw new IOException("The printer did not accept the MQTT message.");
@@ -144,6 +189,10 @@ public sealed class BambuConnection(ConnectionSettings settings) : IPrinterConne
         {
             if (JsonNode.Parse(payload) is not JsonObject root) return;
             if (DescribeRejection(root) is { } rejection) Log?.Invoke(this, rejection);
+            if (root["print"] is JsonObject answer && answer["command"] is JsonValue cmd && cmd.TryGetValue<string>(out var name))
+                lock (_replyGate)
+                    if (_pendingReply is { } pending && pending.Command == name && answer.ContainsKey("result"))
+                        pending.Reply.TrySetResult(answer);
             if (root["print"] is not JsonObject print) return;
             // P1-series printers send incremental reports: merge into the last known state.
             foreach (var (key, value) in print) _print[key] = value?.DeepClone();

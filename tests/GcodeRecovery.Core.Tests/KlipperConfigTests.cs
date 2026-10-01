@@ -114,3 +114,15 @@ public class BambuReplyTests
         Assert.Null(BambuConnection.DescribeRejection(ok));
     }
 }
+
+public class BambuStartLocationTests
+{
+    [Fact]
+    public void P1_mount_point_is_tried_first()
+    {
+        Assert.Equal(["/mnt/sdcard/a.gcode", "/sdcard/a.gcode"], BambuConnection.StartLocations("a.gcode", false));
+        var urls = BambuConnection.StartLocations("a.gcode.3mf", true);
+        Assert.Equal("file:///mnt/sdcard/a.gcode.3mf", urls[0]);
+        Assert.Contains("ftp://a.gcode.3mf", urls);
+    }
+}
