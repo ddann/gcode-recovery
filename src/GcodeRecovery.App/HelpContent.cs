@@ -20,10 +20,11 @@ internal static class HelpContent
         4. Check the last fully printed layer. If the print stopped half-way through a layer, tick the box: that layer is printed
            again from its first line.
         5. Optionally click the preview to choose a different touch point (it must be green).
-        6. Save the touch test and run it first. It heats the bed, lets the nozzle cool, homes X/Y only, moves above the
-           touch point and lowers the cold nozzle slowly until the force sensor detects contact, then backs off.
-        7. If the touch test behaves as expected, save and run the recovery file. It repeats the touch-down, uses the contact as
-           the Z reference, reuses the stored bed mesh, heats and purges/wipes away from the part, and continues from the resume layer.
+        6. Optional: save and run the touch test first. It heats the bed, lets the nozzle cool, homes X/Y only, moves above
+           the touch point and lowers the cold nozzle slowly until the force sensor detects contact, then backs off.
+        7. Run the recovery: "Run recovery now (skip touch test)" generates it and starts it on the connected printer in one
+           step (after one confirmation), or save the file / stream it. The recovery itself always starts with the same
+           touch-down to set Z, then reuses the stored bed mesh, purges and wipes the nozzle, and continues from the resume layer.
 
         HOW THE HEIGHT IS FOUND
         The caliper value only narrows the search. The real Z reference comes from the load cell touching the part,

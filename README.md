@@ -126,8 +126,10 @@ Windows and Linux builds are produced by the CI workflow (`.github/workflows/bui
 
 1. Read the **Checklist** tab first: don't move the part, don't home Z, clean the nozzle tip, load filament.
 2. Open the file, enter the measured height, press **Analyze**, check the layer and touch point.
-3. **Save touch test…** and run it (SD card, or **Upload & run test** when connected). Watch it.
-4. **Save recovery file…** and run it, or **Stream recovery** to keep live control over X/Y/Z and layers.
+3. Optional: **Save touch test…** and run it (SD card, or **Upload & run test** when connected). Watch it.
+4. **Run recovery now (skip touch test)** generates the recovery and starts it on the connected printer after one
+   confirmation. Or **Save recovery file…** to run it yourself, or **Stream recovery** to keep live control over X/Y/Z
+   and layers. The recovery always starts with its own touch-down to set Z.
 
 Command line (handy for testing): `GcodeRecovery file.gcode --height 8.4 [--range 0.4] [--tab n] [--stream-dry]`.
 

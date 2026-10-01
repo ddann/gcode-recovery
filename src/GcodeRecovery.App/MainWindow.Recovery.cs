@@ -170,21 +170,56 @@ public partial class MainWindow
         return (RecoveryPlan.Create(_model, s, t.X, t.Y, ReadOptions()), _profile.Clone());
     }
 
+    private string OutputFileName(RecoveryPlan plan, PrinterProfile profile, bool touchTestOnly)
+    {
+        var baseName = Path.GetFileName(_source!.FilePath);
+        foreach (var ext in new[] { ".gcode.3mf", ".3mf", ".gcode" })
+            if (baseName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) { baseName = baseName[..^ext.Length]; break; }
+        var suffix = touchTestOnly ? "touch-test" : $"resume-L{plan.ResumeLayer.Index + 1}";
+        return $"{baseName}-{suffix}{(_source.IsArchive && profile.PreferArchiveOutput ? ".gcode.3mf" : ".gcode")}";
+    }
+
+    /// <summary>
+    /// Generates the recovery program and starts it on the connected printer right away: no touch-test run and no
+    /// save dialog. The program itself still touches the part once to set Z; only the separate test run is skipped.
+    /// </summary>
+    private async Task RunNowAsync()
+    {
+        if (_printer is not { IsConnected: true } printer)
+        {
+            Log("Connect to the printer first (connection details are in Settings).");
+            return;
+        }
+        if (_model is null || _source is null || BuildPlan(requireSafe: true) is not { } built) return;
+        var (plan, profile) = built;
+
+        var ok = await ConfirmDialog.AskAsync(this, "Run recovery now",
+            $"Start the recovery on {printer.Name} now, without a touch test?\n\n" +
+            $"  • the cold nozzle touches the part at X {plan.TouchX:0.0} Y {plan.TouchY:0.0} to set Z (top of layer {plan.SurfaceLayer.Index + 1})\n" +
+            $"  • then purge and wipe, and print from layer {plan.ResumeLayer.Index + 1} of {_model.Layers.Count}\n\n" +
+            "Z is never homed on the part. Stay at the printer for the touch-down.",
+            "Start recovery");
+        if (!ok) return;
+
+        var dir = Path.Combine(AppSettings.DataDirectory, "jobs");
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, OutputFileName(plan, profile, touchTestOnly: false));
+        if (!await RegenerateAsync(path, touchTestOnly: false)) return;
+        _lastRecoveryPath = path;
+        await UploadAndStart(path, "recovery program");
+    }
+
     private async Task SaveAsync(bool touchTestOnly)
     {
         if (_model is null || _source is null || BuildPlan(requireSafe: true) is not { } built) return;
         var (plan, profile) = built;
         var asArchive = _source.IsArchive && profile.PreferArchiveOutput;
-        var baseName = Path.GetFileName(_source.FilePath);
-        foreach (var ext in new[] { ".gcode.3mf", ".3mf", ".gcode" })
-            if (baseName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) { baseName = baseName[..^ext.Length]; break; }
-        var suffix = touchTestOnly ? "touch-test" : $"resume-L{plan.ResumeLayer.Index + 1}";
         var extension = asArchive ? ".gcode.3mf" : ".gcode";
 
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = touchTestOnly ? "Save touch test" : "Save recovery program",
-            SuggestedFileName = $"{baseName}-{suffix}{extension}",
+            SuggestedFileName = OutputFileName(plan, profile, touchTestOnly),
             DefaultExtension = extension.TrimStart('.'),
             ShowOverwritePrompt = true,
         });

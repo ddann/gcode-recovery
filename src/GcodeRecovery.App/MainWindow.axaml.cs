@@ -47,6 +47,7 @@ public partial class MainWindow : Window
         Preview.TouchPointPicked += (_, p) => SetTouchPoint(p.X, p.Y, userPicked: true);
         GenerateButton.Click += async (_, _) => await SaveAsync(touchTestOnly: false);
         TouchTestButton.Click += async (_, _) => await SaveAsync(touchTestOnly: true);
+        RunNowButton.Click += async (_, _) => await RunNowAsync();
 
         ScrubSlider.PropertyChanged += (_, e) =>
         {
@@ -224,6 +225,7 @@ public partial class MainWindow : Window
     {
         var ready = _model is not null && _analysis is not null && _touch is not null && SelectedSurfaceLayer() is { } i && i < _model.Layers.Count - 1;
         GenerateButton.IsEnabled = ready;
+        RunNowButton.IsEnabled = ready;
         TouchTestButton.IsEnabled = ready;
     }
 
